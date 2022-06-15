@@ -10,7 +10,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": false,
     "noImplicitReturns": true,
-//    "noUnusedLocals": true,
+    "noUnusedLocals": true,
     "noUnusedParameters": true,
     "outDir": "./dist",
     "pretty": true,
