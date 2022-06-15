@@ -16,7 +16,14 @@
     "@walletconnect/client": "2.0.0-beta.26",
     "@walletconnect/legacy-modal": "2.0.0-beta.26",
     "@walletconnect/types": "2.0.0-beta.26",
-    "@walletconnect/utils": "2.0.0-beta.26"
+    "@walletconnect/utils": "2.0.0-beta.26",
+    "@waves/signer": "^1.0.10",
+    "@waves/ts-lib-crypto": "^1.4.4-beta.1",
+    "@waves/ts-types": "^1.0.12",
+    "@waves/waves-transactions": "^4.2.6"
+  },
+  "peerDependencies": {
+    "@waves/signer": "1.x"
   },
   "devDependencies": {
     "@typescript-eslint/parser": "^5.26.0",
