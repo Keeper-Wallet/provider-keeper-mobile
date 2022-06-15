@@ -1,12 +1,24 @@
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
+import * as wavesCrypto from '@waves/ts-lib-crypto';
+import * as wavesTypes from '@waves/ts-types';
+import * as wavesTx from '@waves/waves-transactions';
+import * as wavesAuth from '@waves/waves-transactions/dist/requests/auth';
 
-let client;
-let session;
-let pairings: string[] = [];
-let chains: string[] = [];
-let accounts: string[] = [];
+let state: {
+  client?: Client;
+  session?: SessionTypes.Settled;
+  pairings: string[];
+  chains: string[];
+  accounts: string[];
+} = {
+  client: undefined,
+  session: undefined,
+  pairings: [],
+  chains: [],
+  accounts: [],
+};
 
 const createClient = async () => {
   try {
@@ -16,7 +28,7 @@ const createClient = async () => {
       projectId: process.env.PROJECT_ID,
     });
 
-    client = _client;
+    state.client = _client;
     await _subscribeToEvents(_client);
     await _checkPersistedState(_client);
   } catch (err) {
@@ -25,17 +37,16 @@ const createClient = async () => {
 };
 
 const reset = () => {
-  pairings = [];
-  session = undefined;
-  accounts = [];
-  chains = [];
+  state.pairings = [];
+  state.session = undefined;
+  state.accounts = [];
+  state.chains = [];
 };
 
 const onSessionConnected = async (_session: SessionTypes.Settled) => {
-  session = _session;
-  chains = _session.permissions.blockchain.chains;
-  accounts = _session.state.accounts;
-  console.log(_session, chains, accounts);
+  state.session = _session;
+  state.chains = _session.permissions.blockchain.chains;
+  state.accounts = _session.state.accounts;
 };
 
 const _subscribeToEvents = async (_client: Client) => {
@@ -55,7 +66,7 @@ const _subscribeToEvents = async (_client: Client) => {
   );
 
   _client.on(CLIENT_EVENTS.pairing.created, async () => {
-    pairings = _client.pairing.topics;
+    state.pairings = _client.pairing.topics;
   });
 
   _client.on(
@@ -77,8 +88,8 @@ const _checkPersistedState = async (_client: Client) => {
     throw new Error('WalletConnect is not initialized');
   }
   // populates existing pairings to state
-  pairings = _client.pairing.topics;
-  if (typeof session !== 'undefined') return;
+  state.pairings = _client.pairing.topics;
+  if (typeof state.session !== 'undefined') return;
   // populates existing session to state (assume only the top one)
   if (_client.session.topics.length) {
     const _session = await _client.session.get(_client.session.topics[0]);
@@ -87,14 +98,14 @@ const _checkPersistedState = async (_client: Client) => {
 };
 
 const connect = async (pairing?: { topic: string }) => {
-  if (typeof client === 'undefined') {
+  if (typeof state.client === 'undefined') {
     throw new Error('WalletConnect is not initialized');
   }
   console.log('connect', pairing);
   try {
     const methods = ['waves_auth', 'waves_signTransaction'];
 
-    const session = await client.connect({
+    const session = await state.client.connect({
       metadata: {
         name: 'Test App',
         description: 'Test App for WalletConnect',
@@ -122,5 +133,124 @@ const connect = async (pairing?: { topic: string }) => {
   QRCodeModal.close();
 };
 
+export enum DEFAULT_WAVES_METHODS {
+  WAVES_AUTH = 'waves_auth',
+  WAVES_SIGN_TRANSACTION = 'waves_signTransaction',
+}
+
+const wavesRpc = {
+  testAuth: async (chainId: string, publicKey: string) => {
+    const host = window.location.host;
+    const data = String(Date.now());
+    const params = { host, data };
+    const json = JSON.stringify(params);
+
+    const signature: string = await state.client!.request({
+      topic: state.session!.topic,
+      chainId,
+      request: {
+        method: DEFAULT_WAVES_METHODS.WAVES_AUTH,
+        params: json,
+      },
+    });
+
+    const bytes = wavesAuth.serializeAuthData(params);
+    const valid = wavesCrypto.verifySignature(publicKey, bytes, signature);
+    const address = wavesCrypto.address({ publicKey });
+
+    return {
+      method: DEFAULT_WAVES_METHODS.WAVES_AUTH,
+      address,
+      valid,
+      result: signature,
+    };
+  },
+  testSignTransferTransaction: async (chainId: string, publicKey: string) => {
+    const params = {
+      senderPublicKey: publicKey,
+      amount: 0,
+      fee: 100000,
+      type: 4,
+      version: 2,
+      recipient: 'alias:T:merry',
+      timestamp: Date.now(),
+      chainId: 84,
+      attachment: '',
+    };
+
+    const defaultJson = JSON.stringify(params);
+    const json = prompt('Transaction JSON', defaultJson) || defaultJson;
+
+    const signedJson: string = await state.client!.request({
+      topic: state.session!.topic,
+      chainId,
+      request: {
+        method: DEFAULT_WAVES_METHODS.WAVES_SIGN_TRANSACTION,
+        params: json,
+      },
+    });
+
+    const signedTx = JSON.parse(signedJson);
+    const signature = signedTx.proofs[0];
+
+    const bytes = wavesTx.makeTxBytes(JSON.parse(json));
+    const valid = wavesCrypto.verifySignature(publicKey, bytes, signature);
+    const address = wavesCrypto.address({ publicKey });
+
+    return {
+      method: DEFAULT_WAVES_METHODS.WAVES_SIGN_TRANSACTION,
+      address,
+      valid,
+      result: signature,
+    };
+  },
+  testSignInvokeScriptTransaction: async (
+    chainId: string,
+    publicKey: string
+  ) => {
+    const params = {
+      dApp: 'alias:T:merry',
+      call: {
+        function: 'someFunction',
+        args: [],
+      },
+      senderPublicKey: publicKey,
+      type: wavesTypes.TRANSACTION_TYPE.INVOKE_SCRIPT,
+      version: 3,
+    };
+
+    const defaultJson = JSON.stringify(params);
+    const json = prompt('Transaction JSON', defaultJson) || defaultJson;
+
+    const signedJson: string = await state.client!.request({
+      topic: state.session!.topic,
+      chainId,
+      request: {
+        method: DEFAULT_WAVES_METHODS.WAVES_SIGN_TRANSACTION,
+        params: json,
+      },
+    });
+
+    const signedTx = JSON.parse(signedJson);
+    const signature = signedTx.proofs[0];
+
+    const bytes = wavesTx.makeTxBytes(params);
+    const valid = wavesCrypto.verifySignature(publicKey, bytes, signature);
+    const address = wavesCrypto.address({ publicKey });
+
+    return {
+      method: DEFAULT_WAVES_METHODS.WAVES_SIGN_TRANSACTION,
+      address,
+      valid,
+      result: signature,
+    };
+  },
+};
+
 // @ts-ignore
-window.api = { createClient, connect };
+window.api = {
+  createClient,
+  connect,
+  state,
+  wavesRpc,
+};
