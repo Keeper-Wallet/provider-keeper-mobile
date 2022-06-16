@@ -12,10 +12,18 @@ import { EventEmitter } from 'typed-ts-events';
 import { calculateFee } from './utils';
 import { TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
-import { getAppMetadata } from '@walletconnect/utils';
+import { ERROR, getAppMetadata } from '@walletconnect/utils';
 import { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import { address } from '@waves/ts-lib-crypto';
+
+enum Chains {
+  MAINNET = 'waves:W',
+  TESTNET = 'waves:T',
+  STAGENET = 'waves:S',
+}
+
+const chains = Object.values(Chains);
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -149,7 +157,6 @@ export class ProviderKeeperMobile implements Provider {
         icons: ['https://avatars.githubusercontent.com/u/37784886'],
       };
       const appMeta = getAppMetadata();
-      const chains = ['waves:T', 'waves:W', 'waves:S'];
       const methods = ['waves_auth', 'waves_signTransaction'];
 
       if (
@@ -191,12 +198,21 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   public logout(): Promise<void> {
-    return new Promise<void>(resolve => {
-      // todo wc.disconnect
-      resolve();
-    }).then(() => {
-      this.user = null;
-      this._emitter.trigger('logout', void 0);
+    return this._wcPromise.then(_client => {
+      if (typeof this._session === 'undefined') {
+        return;
+      }
+
+      return _client
+        .disconnect({
+          topic: this._session.topic,
+          reason: ERROR.USER_DISCONNECTED.format(),
+        })
+        .then(() => {
+          this._session = undefined;
+          this.user = null;
+          this._emitter.trigger('logout', void 0);
+        });
     });
   }
 
