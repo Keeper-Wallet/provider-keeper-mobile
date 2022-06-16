@@ -6,6 +6,13 @@ import * as wavesTypes from '@waves/ts-types';
 import * as wavesTx from '@waves/waves-transactions';
 import * as wavesAuth from '@waves/waves-transactions/dist/requests/auth';
 
+import { ProviderKeeperMobile } from './provider-keeper-mobile';
+import { Signer } from '@waves/signer';
+
+const signer = new Signer();
+const mobile = new ProviderKeeperMobile();
+signer.setProvider(mobile);
+
 let state: {
   client?: Client;
   session?: SessionTypes.Settled;
@@ -253,4 +260,5 @@ window.api = {
   connect,
   state,
   wavesRpc,
+  signer,
 };
