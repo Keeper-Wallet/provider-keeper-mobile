@@ -149,14 +149,14 @@ export class ProviderKeeperMobile implements Provider {
         icons: ['https://avatars.githubusercontent.com/u/37784886'],
       };
       const appMeta = getAppMetadata();
-      const chains = [
-        `waves:${String.fromCharCode(this._options!.NETWORK_BYTE)}`,
-      ];
+      const chains = ['waves:T', 'waves:W', 'waves:S'];
       const methods = ['waves_auth', 'waves_signTransaction'];
 
       if (
         typeof this._session !== 'undefined' &&
-        this._session.permissions.blockchain.chains[0] === chains[0]
+        this._session.state.accounts.some(
+          sameChainAccount(this._options!.NETWORK_BYTE)
+        )
       )
         return this._userDataFromSession(this._session);
 
@@ -242,10 +242,20 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private _userDataFromSession(session: SessionTypes.Settled): UserData {
-    const [, networkCode, publicKey] = session.state.accounts[0].split(':');
+    const [, networkCode, publicKey] = session.state.accounts
+      .find(sameChainAccount(this._options!.NETWORK_BYTE))!
+      .split(':');
+
     return {
       address: address(publicKey, networkCode.charCodeAt(0)),
       publicKey: publicKey,
     };
   }
+}
+
+function sameChainAccount(chainId: number) {
+  return function (account: string) {
+    const [ns, networkCode] = account.split(':');
+    return ns === 'waves' && networkCode == String.fromCharCode(chainId);
+  };
 }
