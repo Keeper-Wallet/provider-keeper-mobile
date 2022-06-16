@@ -9,10 +9,6 @@ import * as wavesAuth from '@waves/waves-transactions/dist/requests/auth';
 import { ProviderKeeperMobile } from './provider-keeper-mobile';
 import { Signer } from '@waves/signer';
 
-const signer = new Signer();
-const mobile = new ProviderKeeperMobile();
-signer.setProvider(mobile);
-
 let state: {
   client?: Client;
   session?: SessionTypes.Settled;
@@ -260,5 +256,12 @@ window.api = {
   connect,
   state,
   wavesRpc,
-  signer,
+  provider: (nodeUrl?: string): Signer => {
+    const signer = new Signer(
+      nodeUrl ? { NODE_URL: nodeUrl, LOG_LEVEL: 'verbose' } : undefined
+    );
+    const mobile = new ProviderKeeperMobile();
+    signer.setProvider(mobile);
+    return signer;
+  },
 };
