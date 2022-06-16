@@ -15,38 +15,44 @@ import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { ERROR, getAppMetadata } from '@walletconnect/utils';
 import { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
-import { address } from '@waves/ts-lib-crypto';
+import * as wavesTx from '@waves/waves-transactions';
+import * as wavesCrypto from '@waves/ts-lib-crypto';
 
-enum Chains {
+enum CHAINS {
   MAINNET = 'waves:W',
   TESTNET = 'waves:T',
   STAGENET = 'waves:S',
 }
+const chains = Object.values(CHAINS);
 
-const chains = Object.values(Chains);
+export enum METHODS {
+  WAVES_AUTH = 'waves_auth',
+  WAVES_SIGN_TRANSACTION = 'waves_signTransaction',
+}
+const methods = Object.values(METHODS);
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
 
   private readonly _emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
-  protected _wcPromise: Promise<Client>;
+  protected _clientPromise: Promise<Client>;
   private _session: SessionTypes.Settled | undefined;
   private _options: ConnectOptions | undefined;
 
   constructor() {
-    this._wcPromise = Client.init({
+    this._clientPromise = Client.init({
       logger: 'debug',
       relayUrl: process.env.RELAY_URL,
       projectId: process.env.PROJECT_ID,
     });
-    this._wcPromise
+    this._clientPromise
       .then(() => this._subscribeToEvents())
       .then(() => this._checkPersistedState());
   }
 
   private async _subscribeToEvents() {
-    let _client = await this._wcPromise;
+    let _client = await this._clientPromise;
 
     if (typeof _client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
@@ -96,7 +102,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async _checkPersistedState() {
-    let _client = await this._wcPromise;
+    let _client = await this._clientPromise;
 
     if (typeof _client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
@@ -149,7 +155,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   public login(): Promise<UserData> {
-    return this._wcPromise.then(_client => {
+    return this._clientPromise.then(_client => {
       const DEFAULT_METADATA = {
         name: 'Provider Keeper Mobile',
         description: 'Provider Keeper Mobile for WalletConnect',
@@ -157,15 +163,16 @@ export class ProviderKeeperMobile implements Provider {
         icons: ['https://avatars.githubusercontent.com/u/37784886'],
       };
       const appMeta = getAppMetadata();
-      const methods = ['waves_auth', 'waves_signTransaction'];
 
       if (
         typeof this._session !== 'undefined' &&
         this._session.state.accounts.some(
           sameChainAccount(this._options!.NETWORK_BYTE)
         )
-      )
-        return this._userDataFromSession(this._session);
+      ) {
+        this.user = this._userDataFromSession(this._session);
+        return this.user;
+      }
 
       return _client
         .connect({
@@ -190,15 +197,16 @@ export class ProviderKeeperMobile implements Provider {
         .then(session => {
           this._onSessionConnected(session);
           this.user = this._userDataFromSession(session);
-
           this._emitter.trigger('login', this.user);
+
           return this.user;
-        });
+        })
+        .finally(QRCodeModal.close);
     });
   }
 
   public logout(): Promise<void> {
-    return this._wcPromise.then(_client => {
+    return this._clientPromise.then(_client => {
       if (typeof this._session === 'undefined') {
         return;
       }
@@ -228,33 +236,93 @@ export class ProviderKeeperMobile implements Provider {
   public async sign<T extends Array<SignerTx>>(
     toSign: T
   ): Promise<SignedTx<T>> {
-    if (toSign.length == 1) {
-      const toSignWithFee = await this._txWithFee(toSign[0]);
-      // @ts-ignore
-      return new Promise<SignedTx>(resolve => {
-        // todo rpc.signTransaction()
-        resolve(toSignWithFee as SignedTx<T>);
+    if (toSign.length != 1) {
+      throw new Error('Multiple signature not supported');
+    }
+
+    const tx = toSign[0];
+
+    switch (tx.type) {
+      case TRANSACTION_TYPE.ISSUE:
+      case TRANSACTION_TYPE.REISSUE:
+      case TRANSACTION_TYPE.BURN:
+      case TRANSACTION_TYPE.LEASE:
+      case TRANSACTION_TYPE.EXCHANGE:
+      case TRANSACTION_TYPE.CANCEL_LEASE:
+      case TRANSACTION_TYPE.ALIAS:
+      case TRANSACTION_TYPE.MASS_TRANSFER:
+      case TRANSACTION_TYPE.DATA:
+      case TRANSACTION_TYPE.SPONSORSHIP:
+      case TRANSACTION_TYPE.SET_SCRIPT:
+      case TRANSACTION_TYPE.SET_ASSET_SCRIPT:
+      case TRANSACTION_TYPE.UPDATE_ASSET_INFO:
+        throw new Error(
+          'Only transfer and invoke script transactions are supported'
+        );
+      default: {
+        const txWithFee = await this._prepareTx(tx);
+        console.log(txWithFee);
+        return this._signTransaction(
+          chainId(this._options!.NETWORK_BYTE),
+          this.user!.publicKey,
+          txWithFee
+        );
+      }
+    }
+  }
+
+  private async _signTransaction(
+    chainId: string,
+    publicKey: string,
+    tx: SignerTx
+  ) {
+    const _client = await this._clientPromise;
+
+    // todo tx versioning
+    const signedJson: string = await _client!.request({
+      topic: this._session!.topic,
+      chainId,
+      request: {
+        method: METHODS.WAVES_SIGN_TRANSACTION,
+        params: JSON.stringify(tx),
+      },
+    });
+
+    const signedTx = JSON.parse(signedJson);
+    const signature = signedTx.proofs[0];
+
+    const bytes = wavesTx.makeTxBytes(tx as any); // todo this for debug only
+    const valid = wavesCrypto.verifySignature(publicKey, bytes, signature);
+
+    if (!valid) {
+      throw new Error('Signature is not valid');
+    }
+
+    return signedTx;
+  }
+
+  private async _prepareTx(
+    tx: SignerTx & { chainId?: number }
+  ): Promise<SignerTx> {
+    tx.senderPublicKey = this.user!.publicKey;
+    tx.chainId = this._options!.NETWORK_BYTE;
+
+    if (tx.fee) {
+      return Promise.resolve(tx);
+    }
+
+    if (tx.type === TRANSACTION_TYPE.INVOKE_SCRIPT) {
+      return calculateFee(this._options!.NODE_URL, {
+        ...tx,
+        payment: tx.payment ?? [],
+        senderPublicKey: this.user!.publicKey,
       });
     }
 
-    throw new Error('Multiple signature not supported');
-  }
-
-  private _publicKeyPromise(): Promise<string | undefined> {
-    return new Promise<string | undefined>(resolve => {
-      // todo session.accounts
-      resolve(undefined);
+    return calculateFee(this._options!.NODE_URL, {
+      ...tx,
+      senderPublicKey: this.user!.publicKey,
     });
-  }
-
-  private async _txWithFee(tx: SignerTx): Promise<SignerTx> {
-    return tx.type === TRANSACTION_TYPE.INVOKE_SCRIPT && !tx.fee
-      ? calculateFee(this._options!.NODE_URL, {
-          ...tx,
-          payment: tx.payment ?? [],
-          senderPublicKey: await this._publicKeyPromise(),
-        })
-      : Promise.resolve(tx);
   }
 
   private _userDataFromSession(session: SessionTypes.Settled): UserData {
@@ -263,7 +331,7 @@ export class ProviderKeeperMobile implements Provider {
       .split(':');
 
     return {
-      address: address(publicKey, networkCode.charCodeAt(0)),
+      address: wavesCrypto.address(publicKey, networkCode.charCodeAt(0)),
       publicKey: publicKey,
     };
   }
@@ -274,4 +342,8 @@ function sameChainAccount(chainId: number) {
     const [ns, networkCode] = account.split(':');
     return ns === 'waves' && networkCode == String.fromCharCode(chainId);
   };
+}
+
+function chainId(chainId: number) {
+  return `waves:${String.fromCharCode(chainId)}`;
 }
