@@ -12,20 +12,19 @@ import { EventEmitter } from 'typed-ts-events';
 import { calculateFee } from './utils';
 import { TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
+import { getAppMetadata } from '@walletconnect/utils';
 import { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
+import { address } from '@waves/ts-lib-crypto';
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
-  private _options: ConnectOptions = {
-    NETWORK_BYTE: 'W'.charCodeAt(0),
-    NODE_URL: 'https://nodes.wavesnodes.com',
-  };
+
   private readonly _emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
-
   protected _wcPromise: Promise<Client>;
   private _session: SessionTypes.Settled | undefined;
+  private _options: ConnectOptions | undefined;
 
   constructor() {
     this._wcPromise = Client.init({
@@ -48,12 +47,21 @@ export class ProviderKeeperMobile implements Provider {
     _client.on(
       CLIENT_EVENTS.pairing.proposal,
       async (proposal: PairingTypes.Proposal) => {
+        console.log('EVENT', 'proposal', proposal);
         const { uri } = proposal.signal.params;
 
-        console.log('EVENT', 'QR Code Modal open');
-        QRCodeModal.open(uri, () => {
-          console.log('EVENT', 'QR Code Modal closed');
-        });
+        QRCodeModal.open(
+          uri,
+          () => {
+            console.log('EVENT', 'QR Code callback');
+          },
+          {
+            mobileLinks: [
+              'https://play.google.com/store/apps/details?id=app.keeper-wallet',
+            ],
+            desktopLinks: [],
+          }
+        );
       }
     );
 
@@ -97,6 +105,7 @@ export class ProviderKeeperMobile implements Provider {
 
   private _onSessionConnected(session: SessionTypes.Settled) {
     this._session = session;
+    this.user = { address: '', publicKey: '' };
   }
 
   public on<EVENT extends keyof AuthEvents>(
@@ -126,20 +135,58 @@ export class ProviderKeeperMobile implements Provider {
     return this;
   }
 
-  public connect(options: ConnectOptions): Promise<void> {
-    // todo wc.connect if session is empty
+  public async connect(options: ConnectOptions): Promise<void> {
     this._options = options;
     return Promise.resolve();
   }
 
   public login(): Promise<UserData> {
-    return new Promise<UserData>(resolve => {
-      // todo rpc.auth
-      this.user = { address: '', publicKey: '' };
-      resolve(this.user);
-    }).then(user => {
-      this._emitter.trigger('login', user);
-      return user;
+    return this._wcPromise.then(_client => {
+      const DEFAULT_METADATA = {
+        name: 'Provider Keeper Mobile',
+        description: 'Provider Keeper Mobile for WalletConnect',
+        url: window.location.origin,
+        icons: ['https://avatars.githubusercontent.com/u/37784886'],
+      };
+      const appMeta = getAppMetadata();
+      const chains = [
+        `waves:${String.fromCharCode(this._options!.NETWORK_BYTE)}`,
+      ];
+      const methods = ['waves_auth', 'waves_signTransaction'];
+
+      if (
+        typeof this._session !== 'undefined' &&
+        this._session.permissions.blockchain.chains[0] === chains[0]
+      )
+        return this._userDataFromSession(this._session);
+
+      return _client
+        .connect({
+          metadata: {
+            name: appMeta?.name || DEFAULT_METADATA.name,
+            description: appMeta?.description || DEFAULT_METADATA.description,
+            url: appMeta?.url || window.location.origin,
+            icons:
+              appMeta?.icons && appMeta?.icons.length !== 0
+                ? appMeta.icons
+                : DEFAULT_METADATA.icons,
+          },
+          permissions: {
+            blockchain: {
+              chains,
+            },
+            jsonrpc: {
+              methods,
+            },
+          },
+        })
+        .then(session => {
+          this._onSessionConnected(session);
+          this.user = this._userDataFromSession(session);
+
+          this._emitter.trigger('login', this.user);
+          return this.user;
+        });
     });
   }
 
@@ -154,11 +201,11 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   public signMessage(_data?: string | number): Promise<string> {
-    return Promise.reject('signMessage not supported');
+    throw new Error('signMessage not supported');
   }
 
   public signTypedData(_data: Array<TypedData>): Promise<string> {
-    return Promise.reject('signTypedData not supported');
+    throw new Error('signTypedData not supported');
   }
 
   public async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
@@ -174,7 +221,7 @@ export class ProviderKeeperMobile implements Provider {
       });
     }
 
-    return Promise.reject(new Error('Multiple signature not supported'));
+    throw new Error('Multiple signature not supported');
   }
 
   private _publicKeyPromise(): Promise<string | undefined> {
@@ -186,11 +233,19 @@ export class ProviderKeeperMobile implements Provider {
 
   private async _txWithFee(tx: SignerTx): Promise<SignerTx> {
     return tx.type === TRANSACTION_TYPE.INVOKE_SCRIPT && !tx.fee
-      ? calculateFee(this._options.NODE_URL, {
+      ? calculateFee(this._options!.NODE_URL, {
           ...tx,
           payment: tx.payment ?? [],
           senderPublicKey: await this._publicKeyPromise(),
         })
       : Promise.resolve(tx);
+  }
+
+  private _userDataFromSession(session: SessionTypes.Settled): UserData {
+    const [, networkCode, publicKey] = session.state.accounts[0].split(':');
+    return {
+      address: address(publicKey, networkCode.charCodeAt(0)),
+      publicKey: publicKey,
+    };
   }
 }
