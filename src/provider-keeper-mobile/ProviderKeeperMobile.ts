@@ -11,6 +11,9 @@ import {
 import { EventEmitter } from 'typed-ts-events';
 import { calculateFee } from './utils';
 import { TRANSACTION_TYPE } from '@waves/ts-types';
+import Client, { CLIENT_EVENTS } from '@walletconnect/client';
+import { PairingTypes, SessionTypes } from '@walletconnect/types';
+import QRCodeModal from '@walletconnect/legacy-modal';
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -21,9 +24,79 @@ export class ProviderKeeperMobile implements Provider {
   private readonly _emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
 
+  protected _wcPromise: Promise<Client>;
+  private _session: SessionTypes.Settled | undefined;
+
   constructor() {
-    // todo wc.createClient
-    // todo wc.connect if session is empty
+    this._wcPromise = Client.init({
+      logger: 'debug',
+      relayUrl: process.env.RELAY_URL,
+      projectId: process.env.PROJECT_ID,
+    });
+    this._wcPromise
+      .then(() => this._subscribeToEvents())
+      .then(() => this._checkPersistedState());
+  }
+
+  private async _subscribeToEvents() {
+    let _client = await this._wcPromise;
+
+    if (typeof _client === 'undefined') {
+      throw new Error('WalletConnect is not initialized');
+    }
+
+    _client.on(
+      CLIENT_EVENTS.pairing.proposal,
+      async (proposal: PairingTypes.Proposal) => {
+        const { uri } = proposal.signal.params;
+
+        console.log('EVENT', 'QR Code Modal open');
+        QRCodeModal.open(uri, () => {
+          console.log('EVENT', 'QR Code Modal closed');
+        });
+      }
+    );
+
+    _client.on(CLIENT_EVENTS.pairing.created, async () => {
+      console.log('EVENT', 'pairing_created');
+    });
+
+    _client.on(
+      CLIENT_EVENTS.session.updated,
+      (updatedSession: SessionTypes.Settled) => {
+        console.log('EVENT', 'session_updated');
+        this._onSessionConnected(updatedSession);
+      }
+    );
+
+    _client.on(CLIENT_EVENTS.session.deleted, () => {
+      console.log('EVENT', 'session_deleted');
+      this._reset();
+    });
+  }
+
+  private _reset() {
+    this._session = undefined;
+  }
+
+  private async _checkPersistedState() {
+    let _client = await this._wcPromise;
+
+    if (typeof _client === 'undefined') {
+      throw new Error('WalletConnect is not initialized');
+    }
+
+    if (typeof this._session !== 'undefined') return;
+
+    // populates existing session to state (assume only the top one)
+    if (_client.session.topics.length) {
+      const _session = await _client.session.get(_client.session.topics[0]);
+      this._onSessionConnected(_session);
+    }
+  }
+
+  private _onSessionConnected(session: SessionTypes.Settled) {
+    this._session = session;
   }
 
   public on<EVENT extends keyof AuthEvents>(
@@ -54,6 +127,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   public connect(options: ConnectOptions): Promise<void> {
+    // todo wc.connect if session is empty
     this._options = options;
     return Promise.resolve();
   }
