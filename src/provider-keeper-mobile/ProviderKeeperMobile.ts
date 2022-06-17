@@ -10,27 +10,22 @@ import {
 } from '@waves/signer';
 import { EventEmitter } from 'typed-ts-events';
 import { calculateFee } from './utils';
-import { TRANSACTION_TYPE } from '@waves/ts-types';
+import { DataTransactionEntry, TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { ERROR, getAppMetadata } from '@walletconnect/utils';
 import { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesTx from '@waves/waves-transactions';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
-import * as wavesAuth from '@waves/waves-transactions/dist/requests/auth';
+import * as wavesCustom from '@waves/waves-transactions/dist/requests/custom-data';
+import { DataTransactionDeleteRequest } from '@waves/ts-types/src/parts';
 
-enum CHAINS {
-  MAINNET = 'waves:W',
-  TESTNET = 'waves:T',
-  STAGENET = 'waves:S',
+export enum RpcMethods {
+  signTransaction = 'waves_signTransaction',
+  signMessage = 'waves_signMessage',
+  signTypedData = 'waves_signTypedData',
 }
-const chains = Object.values(CHAINS);
-
-export enum WAVES_METHODS {
-  WAVES_AUTH = 'waves_auth',
-  WAVES_SIGN_TRANSACTION = 'waves_signTransaction',
-}
-const methods = Object.values(WAVES_METHODS);
+const methods = Object.values(RpcMethods);
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -188,7 +183,7 @@ export class ProviderKeeperMobile implements Provider {
           },
           permissions: {
             blockchain: {
-              chains,
+              chains: [chainId(this._options!.NETWORK_BYTE)],
             },
             jsonrpc: {
               methods,
@@ -204,6 +199,17 @@ export class ProviderKeeperMobile implements Provider {
         })
         .finally(QRCodeModal.close);
     });
+  }
+
+  private _userDataFromSession(session: SessionTypes.Settled): UserData {
+    const [, networkCode, publicKey] = session.state.accounts
+      .find(sameChainAccount(this._options!.NETWORK_BYTE))!
+      .split(':');
+
+    return {
+      address: wavesCrypto.address(publicKey, networkCode.charCodeAt(0)),
+      publicKey: publicKey,
+    };
   }
 
   public logout(): Promise<void> {
@@ -223,14 +229,6 @@ export class ProviderKeeperMobile implements Provider {
           this._emitter.trigger('logout', void 0);
         });
     });
-  }
-
-  public signMessage(_data?: string | number): Promise<string> {
-    throw new Error('signMessage not supported');
-  }
-
-  public signTypedData(_data: Array<TypedData>): Promise<string> {
-    throw new Error('signTypedData not supported');
   }
 
   public async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
@@ -267,52 +265,43 @@ export class ProviderKeeperMobile implements Provider {
     }
   }
 
-  private async _authData(authData: { host: string; data: string }) {
-    const _client = await this._clientPromise;
+  private async _prepareTx(
+    tx: SignerTx & { chainId?: number }
+  ): Promise<SignerTx> {
+    tx.chainId = this._options!.NETWORK_BYTE;
+    tx.senderPublicKey = this.user!.publicKey;
 
-    const signature: string = await _client!.request({
-      topic: this._session!.topic,
-      chainId: wavesId(this._options!.NETWORK_BYTE),
-      request: {
-        method: WAVES_METHODS.WAVES_AUTH,
-        params: JSON.stringify(authData),
-      },
-    });
-
-    const bytes = wavesAuth.serializeAuthData(authData);
-    const valid = wavesCrypto.verifySignature(
-      this.user!.publicKey,
-      bytes,
-      signature
-    );
-    if (!valid) {
-      throw new Error('Signature is invalid');
+    if (tx.fee) {
+      return Promise.resolve(tx);
     }
+
+    // todo remove fee calculation
+    if (tx.type === TRANSACTION_TYPE.INVOKE_SCRIPT) {
+      return calculateFee(this._options!.NODE_URL, {
+        ...tx,
+        payment: tx.payment ?? [],
+      });
+    }
+
+    return calculateFee(this._options!.NODE_URL, tx);
   }
 
   private async _signTransaction(tx: SignerTx) {
-    const _client = await this._clientPromise;
-
-    // todo tx versioning
-    const signedJson: string = await _client!.request({
-      topic: this._session!.topic,
-      chainId: wavesId(this._options!.NETWORK_BYTE),
-      request: {
-        method: WAVES_METHODS.WAVES_SIGN_TRANSACTION,
-        params: JSON.stringify(tx),
-      },
-    });
+    const signedJson = await this._performRequest(
+      RpcMethods.signTransaction,
+      JSON.stringify(tx)
+    );
 
     const signedTx = JSON.parse(signedJson);
-    const signature = signedTx.proofs[0];
 
-    const bytes = wavesTx.makeTxBytes(tx as any); // todo this for debug only
+    // todo remove signature validation, debug only
+    const signature = signedTx.proofs[0];
+    const bytes = wavesTx.makeTxBytes(tx as any);
     const valid = wavesCrypto.verifySignature(
       this.user!.publicKey,
       bytes,
       signature
     );
-
     if (!valid) {
       throw new Error('Signature is invalid');
     }
@@ -320,49 +309,78 @@ export class ProviderKeeperMobile implements Provider {
     return signedTx;
   }
 
-  private async _prepareTx(
-    tx: SignerTx & { chainId?: number }
-  ): Promise<SignerTx> {
-    tx.senderPublicKey = this.user!.publicKey;
-    tx.chainId = this._options!.NETWORK_BYTE;
+  public async signMessage(data: string | number): Promise<string> {
+    data = String(data);
 
-    if (tx.fee) {
-      return Promise.resolve(tx);
-    }
+    const signature: string = await this._performRequest(
+      RpcMethods.signMessage,
+      JSON.stringify(data)
+    );
 
-    if (tx.type === TRANSACTION_TYPE.INVOKE_SCRIPT) {
-      return calculateFee(this._options!.NODE_URL, {
-        ...tx,
-        payment: tx.payment ?? [],
-        senderPublicKey: this.user!.publicKey,
-      });
-    }
-
-    return calculateFee(this._options!.NODE_URL, {
-      ...tx,
-      senderPublicKey: this.user!.publicKey,
+    // todo remove signature validation, debug only
+    const bytes = wavesCustom.serializeCustomData({
+      version: 1,
+      binary: data,
     });
+    const valid = wavesCrypto.verifySignature(
+      this.user!.publicKey,
+      bytes,
+      signature
+    );
+    if (!valid) {
+      throw new Error('Signature is invalid');
+    }
+
+    return signature;
   }
 
-  private _userDataFromSession(session: SessionTypes.Settled): UserData {
-    const [, networkCode, publicKey] = session.state.accounts
-      .find(sameChainAccount(this._options!.NETWORK_BYTE))!
-      .split(':');
+  public async signTypedData(data: Array<TypedData>): Promise<string> {
+    const signature: string = await this._performRequest(
+      RpcMethods.signTypedData,
+      JSON.stringify(data)
+    );
 
-    return {
-      address: wavesCrypto.address(publicKey, networkCode.charCodeAt(0)),
-      publicKey: publicKey,
-    };
+    // todo remove signature validation, debug only
+    const bytes = wavesCustom.serializeCustomData({
+      version: 2,
+      data: data as Exclude<
+        DataTransactionEntry,
+        DataTransactionDeleteRequest
+      >[],
+    });
+    const valid = wavesCrypto.verifySignature(
+      this.user!.publicKey,
+      bytes,
+      signature
+    );
+    if (!valid) {
+      throw new Error('Signature is invalid');
+    }
+
+    return signature;
+  }
+
+  private async _performRequest(
+    method: RpcMethods,
+    params: string
+  ): Promise<string> {
+    const _client = await this._clientPromise;
+
+    return await _client!.request({
+      topic: this._session!.topic,
+      chainId: chainId(this._options!.NETWORK_BYTE),
+      request: { method, params },
+    });
   }
 }
 
-function sameChainAccount(chainId: number) {
+function sameChainAccount(networkByte: number) {
   return function (account: string) {
     const [ns, networkCode] = account.split(':');
-    return ns === 'waves' && networkCode == String.fromCharCode(chainId);
+    return ns === 'waves' && networkCode == String.fromCharCode(networkByte);
   };
 }
 
-function wavesId(chainId: number) {
-  return `waves:${String.fromCharCode(chainId)}`;
+function chainId(networkByte: number) {
+  return `waves:${String.fromCharCode(networkByte)}`;
 }
