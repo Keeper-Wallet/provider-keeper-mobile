@@ -9,7 +9,7 @@ import {
   UserData,
 } from '@waves/signer';
 import { EventEmitter } from 'typed-ts-events';
-import { calculateFee } from './utils';
+import { calculateFee, chainId, sameChainAccount } from './utils';
 import { DataTransactionEntry, TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { ERROR, getAppMetadata } from '@walletconnect/utils';
@@ -372,15 +372,4 @@ export class ProviderKeeperMobile implements Provider {
       request: { method, params },
     });
   }
-}
-
-function sameChainAccount(networkByte: number) {
-  return function (account: string) {
-    const [ns, networkCode] = account.split(':');
-    return ns === 'waves' && networkCode == String.fromCharCode(networkByte);
-  };
-}
-
-function chainId(networkByte: number) {
-  return `waves:${String.fromCharCode(networkByte)}`;
 }
