@@ -17,6 +17,7 @@ import { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesTx from '@waves/waves-transactions';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
+import * as wavesAuth from '@waves/waves-transactions/dist/requests/auth';
 
 enum CHAINS {
   MAINNET = 'waves:W',
@@ -25,11 +26,11 @@ enum CHAINS {
 }
 const chains = Object.values(CHAINS);
 
-export enum METHODS {
+export enum WAVES_METHODS {
   WAVES_AUTH = 'waves_auth',
   WAVES_SIGN_TRANSACTION = 'waves_signTransaction',
 }
-const methods = Object.values(METHODS);
+const methods = Object.values(WAVES_METHODS);
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -261,29 +262,43 @@ export class ProviderKeeperMobile implements Provider {
         );
       default: {
         const txWithFee = await this._prepareTx(tx);
-        console.log(txWithFee);
-        return this._signTransaction(
-          chainId(this._options!.NETWORK_BYTE),
-          this.user!.publicKey,
-          txWithFee
-        );
+        return this._signTransaction(txWithFee);
       }
     }
   }
 
-  private async _signTransaction(
-    chainId: string,
-    publicKey: string,
-    tx: SignerTx
-  ) {
+  private async _authData(authData: { host: string; data: string }) {
+    const _client = await this._clientPromise;
+
+    const signature: string = await _client!.request({
+      topic: this._session!.topic,
+      chainId: wavesId(this._options!.NETWORK_BYTE),
+      request: {
+        method: WAVES_METHODS.WAVES_AUTH,
+        params: JSON.stringify(authData),
+      },
+    });
+
+    const bytes = wavesAuth.serializeAuthData(authData);
+    const valid = wavesCrypto.verifySignature(
+      this.user!.publicKey,
+      bytes,
+      signature
+    );
+    if (!valid) {
+      throw new Error('Signature is invalid');
+    }
+  }
+
+  private async _signTransaction(tx: SignerTx) {
     const _client = await this._clientPromise;
 
     // todo tx versioning
     const signedJson: string = await _client!.request({
       topic: this._session!.topic,
-      chainId,
+      chainId: wavesId(this._options!.NETWORK_BYTE),
       request: {
-        method: METHODS.WAVES_SIGN_TRANSACTION,
+        method: WAVES_METHODS.WAVES_SIGN_TRANSACTION,
         params: JSON.stringify(tx),
       },
     });
@@ -292,10 +307,14 @@ export class ProviderKeeperMobile implements Provider {
     const signature = signedTx.proofs[0];
 
     const bytes = wavesTx.makeTxBytes(tx as any); // todo this for debug only
-    const valid = wavesCrypto.verifySignature(publicKey, bytes, signature);
+    const valid = wavesCrypto.verifySignature(
+      this.user!.publicKey,
+      bytes,
+      signature
+    );
 
     if (!valid) {
-      throw new Error('Signature is not valid');
+      throw new Error('Signature is invalid');
     }
 
     return signedTx;
@@ -344,6 +363,6 @@ function sameChainAccount(chainId: number) {
   };
 }
 
-function chainId(chainId: number) {
+function wavesId(chainId: number) {
   return `waves:${String.fromCharCode(chainId)}`;
 }
