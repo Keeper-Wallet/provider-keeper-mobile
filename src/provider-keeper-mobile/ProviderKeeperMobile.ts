@@ -116,7 +116,14 @@ export class ProviderKeeperMobile implements Provider {
 
   private _onSessionConnected(session: SessionTypes.Settled) {
     this._session = session;
-    this.user = { address: '', publicKey: '' };
+    this.user = this._userDataFromSession(session);
+    this._emitter.trigger('login', this.user);
+  }
+
+  private _onSessionDisconnected() {
+    this._session = undefined;
+    this.user = null;
+    this._emitter.trigger('logout', void 0);
   }
 
   public on<EVENT extends keyof AuthEvents>(
@@ -167,8 +174,9 @@ export class ProviderKeeperMobile implements Provider {
           sameChainAccount(this._options!.NETWORK_BYTE)
         )
       ) {
-        this.user = this._userDataFromSession(this._session);
-        return this.user;
+        this._onSessionConnected(this._session);
+
+        return this.user!;
       }
 
       return _client
@@ -193,10 +201,8 @@ export class ProviderKeeperMobile implements Provider {
         })
         .then(session => {
           this._onSessionConnected(session);
-          this.user = this._userDataFromSession(session);
-          this._emitter.trigger('login', this.user);
 
-          return this.user;
+          return this.user!;
         })
         .finally(QRCodeModal.close);
     });
@@ -224,11 +230,7 @@ export class ProviderKeeperMobile implements Provider {
           topic: this._session.topic,
           reason: ERROR.USER_DISCONNECTED.format(),
         })
-        .then(() => {
-          this._session = undefined;
-          this.user = null;
-          this._emitter.trigger('logout', void 0);
-        });
+        .then(() => this._onSessionDisconnected());
     });
   }
 
