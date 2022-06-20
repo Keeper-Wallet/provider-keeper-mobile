@@ -227,17 +227,18 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   public logout(): Promise<void> {
-    return this._clientPromise.then(_client => {
+    return new Promise(async resolve => {
       if (typeof this._session === 'undefined') {
         return;
       }
 
-      return _client
-        .disconnect({
-          topic: this._session.topic,
-          reason: ERROR.USER_DISCONNECTED.format(),
-        })
-        .then(() => this._onSessionDisconnected());
+      const _client = await this._clientPromise;
+      await _client.disconnect({
+        topic: this._session.topic,
+        reason: ERROR.USER_DISCONNECTED.format(),
+      });
+      this._onSessionDisconnected();
+      resolve();
     });
   }
 
