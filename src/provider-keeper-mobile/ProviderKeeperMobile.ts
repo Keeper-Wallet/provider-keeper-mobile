@@ -20,6 +20,7 @@ import * as wavesCrypto from '@waves/ts-lib-crypto';
 import * as wavesCustom from '@waves/waves-transactions/dist/requests/custom-data';
 import { DataTransactionDeleteRequest } from '@waves/ts-types/src/parts';
 import { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
+import provider from '../../package.json';
 
 export enum RpcMethods {
   signTransaction = 'waves_signTransaction',
@@ -27,6 +28,7 @@ export enum RpcMethods {
   signTypedData = 'waves_signTypedData',
 }
 const methods = Object.values(RpcMethods);
+const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -107,22 +109,31 @@ export class ProviderKeeperMobile implements Provider {
 
     if (typeof this._session !== 'undefined') return;
 
-    // populates existing session to state (assume only the top one)
-    if (_client.session.topics.length) {
-      const _session = await _client.session.get(_client.session.topics[0]);
-      this._onSessionConnected(_session);
+    if (_client.session.topics.length === 0) {
+      return;
     }
+
+    const topic = localStorage.getItem(LAST_TOPIC_KEY);
+
+    if (topic == null || !_client.session.topics.includes(topic)) {
+      return;
+    }
+
+    const _session = await _client.session.get(topic);
+    this._onSessionConnected(_session);
   }
 
   private _onSessionConnected(session: SessionTypes.Settled) {
     this._session = session;
     this.user = this._userDataFromSession(session);
+    localStorage.setItem(LAST_TOPIC_KEY, session.topic);
     this._emitter.trigger('login', this.user);
   }
 
   private _onSessionDisconnected() {
     this._session = undefined;
     this.user = null;
+    localStorage.removeItem(LAST_TOPIC_KEY);
     this._emitter.trigger('logout', void 0);
   }
 
