@@ -29,6 +29,12 @@ export enum RpcMethods {
 }
 const methods = Object.values(RpcMethods);
 const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
+const DEFAULT_METADATA = {
+  name: 'Provider Keeper Mobile',
+  description: 'Provider Keeper Mobile for WalletConnect',
+  url: window.location.origin,
+  icons: ['https://avatars.githubusercontent.com/u/37784886'],
+};
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -36,6 +42,7 @@ export class ProviderKeeperMobile implements Provider {
   private readonly _emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
   protected _clientPromise: Promise<Client>;
+  private _loginReject: ((err: Error) => void) | undefined;
   private _session: SessionTypes.Settled | undefined;
   private _options: ConnectOptions | undefined;
 
@@ -60,27 +67,20 @@ export class ProviderKeeperMobile implements Provider {
     _client.on(
       CLIENT_EVENTS.pairing.proposal,
       async (proposal: PairingTypes.Proposal) => {
-        console.log('EVENT', 'proposal', proposal);
         const { uri } = proposal.signal.params;
 
         QRCodeModal.open(
           uri,
-          () => {
-            console.log('EVENT', 'QR Code callback');
-          },
+          () => this._loginReject!(new Error('Cancelled by user')),
           {
-            mobileLinks: [
-              'https://play.google.com/store/apps/details?id=app.keeper-wallet',
-            ],
+            mobileLinks: ['https://keeper-wallet.app'],
             desktopLinks: [],
           }
         );
       }
     );
 
-    _client.on(CLIENT_EVENTS.pairing.created, async () => {
-      console.log('EVENT', 'pairing_created');
-    });
+    _client.on(CLIENT_EVENTS.pairing.created, () => QRCodeModal.close());
 
     _client.on(
       CLIENT_EVENTS.session.updated,
@@ -170,14 +170,9 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   public login(): Promise<UserData> {
-    return this._clientPromise.then(_client => {
-      const DEFAULT_METADATA = {
-        name: 'Provider Keeper Mobile',
-        description: 'Provider Keeper Mobile for WalletConnect',
-        url: window.location.origin,
-        icons: ['https://avatars.githubusercontent.com/u/37784886'],
-      };
-      const appMeta = getAppMetadata();
+    return new Promise(async (resolve, reject) => {
+      this._loginReject = reject;
+      const _client = await this._clientPromise;
 
       if (
         typeof this._session !== 'undefined' &&
@@ -186,12 +181,13 @@ export class ProviderKeeperMobile implements Provider {
         )
       ) {
         this._onSessionConnected(this._session);
-
-        return this.user!;
+        return resolve(this.user!);
       }
 
-      return _client
-        .connect({
+      const appMeta = getAppMetadata();
+
+      try {
+        const session = await _client.connect({
           metadata: {
             name: appMeta?.name || DEFAULT_METADATA.name,
             description: appMeta?.description || DEFAULT_METADATA.description,
@@ -209,13 +205,13 @@ export class ProviderKeeperMobile implements Provider {
               methods,
             },
           },
-        })
-        .then(session => {
-          this._onSessionConnected(session);
+        });
 
-          return this.user!;
-        })
-        .finally(QRCodeModal.close);
+        this._onSessionConnected(session);
+        resolve(this.user!);
+      } catch (e) {
+        this._loginReject(new Error('Cancelled by peer'));
+      }
     });
   }
 
