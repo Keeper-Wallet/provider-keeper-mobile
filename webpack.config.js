@@ -10,9 +10,8 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.ts$/,
-        use: ['ts-loader'],
-        exclude: /node_modules/,
+        test: /\.tsx?$/,
+        loader: 'babel-loader',
       },
     ],
   },
@@ -20,7 +19,7 @@ module.exports = {
     extensions: ['.ts', '.js'],
   },
   output: {
-    filename: 'dapp.min.js',
+    filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
   plugins: [

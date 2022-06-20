@@ -2,7 +2,9 @@
   "include": ["src/**/*"],
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
-    "declaration": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "isolatedModules": true,
     "lib": ["esnext", "dom"],
     "module": "esnext",
     "moduleResolution": "node",
@@ -14,9 +16,9 @@
     "noUnusedParameters": true,*/
     "outDir": "./dist",
     "pretty": true,
+    "resolveJsonModule": true,
     "sourceMap": true,
     "strict": true,
-    "target": "esnext",
-    "resolveJsonModule": true
+    "target": "esnext"
   }
 }

@@ -5,7 +5,7 @@
   "author": "Sergey Melnikov <asmelnikovse@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "webpack",
+    "build": "tsc && webpack",
     "start": "webpack-dev-server",
     "eslint:check": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",
@@ -17,7 +17,6 @@
     "@walletconnect/legacy-modal": "2.0.0-beta.26",
     "@walletconnect/types": "2.0.0-beta.26",
     "@walletconnect/utils": "2.0.0-beta.26",
-    "@waves/signer": "^1.0.10",
     "@waves/ts-lib-crypto": "^1.4.4-beta.1",
     "@waves/ts-types": "^1.0.12",
     "@waves/waves-transactions": "^4.2.6"
@@ -26,14 +25,18 @@
     "@waves/signer": "1.x"
   },
   "devDependencies": {
+    "@babel/core": "^7.18.0",
+    "@babel/plugin-transform-runtime": "^7.18.0",
+    "@babel/preset-env": "^7.18.0",
+    "@babel/preset-typescript": "^7.17.12",
     "@typescript-eslint/parser": "^5.26.0",
+    "babel-loader": "^8.2.5",
     "buffer": "^6.0.3",
     "dotenv-webpack": "^7.1.0",
     "eslint": "^8.16.0",
     "eslint-config-prettier": "^8.5.0",
     "html-webpack-plugin": "^5.3.2",
     "prettier": "^2.6.2",
-    "ts-loader": "^9.3.0",
     "typescript": "^4.7.3",
     "webpack": "^5.52.1",
     "webpack-cli": "^4.8.0",
