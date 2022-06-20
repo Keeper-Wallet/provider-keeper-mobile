@@ -20,21 +20,12 @@ import * as wavesCrypto from '@waves/ts-lib-crypto';
 import * as wavesCustom from '@waves/waves-transactions/dist/requests/custom-data';
 import { DataTransactionDeleteRequest } from '@waves/ts-types/src/parts';
 import { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
-import provider from '../../package.json';
-
-export enum RpcMethods {
-  signTransaction = 'waves_signTransaction',
-  signMessage = 'waves_signMessage',
-  signTypedData = 'waves_signTypedData',
-}
-const methods = Object.values(RpcMethods);
-const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
-const DEFAULT_METADATA = {
-  name: 'Provider Keeper Mobile',
-  description: 'Provider Keeper Mobile for WalletConnect',
-  url: window.location.origin,
-  icons: ['https://avatars.githubusercontent.com/u/37784886'],
-};
+import {
+  DEFAULT_METADATA,
+  LAST_TOPIC_KEY,
+  ALL_RPC_METHODS,
+  RPC_METHODS,
+} from './constants';
 
 export class ProviderKeeperMobile implements Provider {
   public user: UserData | null = null;
@@ -202,7 +193,7 @@ export class ProviderKeeperMobile implements Provider {
               chains: [chainId(this._options!.NETWORK_BYTE)],
             },
             jsonrpc: {
-              methods,
+              methods: ALL_RPC_METHODS,
             },
           },
         });
@@ -302,7 +293,7 @@ export class ProviderKeeperMobile implements Provider {
     tx: T
   ): Promise<SignerTxToSignedTx<T>> {
     const signedJson = await this._performRequest(
-      RpcMethods.signTransaction,
+      RPC_METHODS.signTransaction,
       JSON.stringify(tx)
     );
 
@@ -327,7 +318,7 @@ export class ProviderKeeperMobile implements Provider {
     data = String(data);
 
     const signature: string = await this._performRequest(
-      RpcMethods.signMessage,
+      RPC_METHODS.signMessage,
       JSON.stringify(data)
     );
 
@@ -350,7 +341,7 @@ export class ProviderKeeperMobile implements Provider {
 
   public async signTypedData(data: Array<TypedData>): Promise<string> {
     const signature: string = await this._performRequest(
-      RpcMethods.signTypedData,
+      RPC_METHODS.signTypedData,
       JSON.stringify(data)
     );
 
@@ -375,7 +366,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async _performRequest(
-    method: RpcMethods,
+    method: RPC_METHODS,
     params: string
   ): Promise<string> {
     const _client = await this._clientPromise;
