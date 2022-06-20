@@ -19,6 +19,7 @@ import * as wavesTx from '@waves/waves-transactions';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 import * as wavesCustom from '@waves/waves-transactions/dist/requests/custom-data';
 import { DataTransactionDeleteRequest } from '@waves/ts-types/src/parts';
+import { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
 
 export enum RpcMethods {
   signTransaction = 'waves_signTransaction',
@@ -260,7 +261,8 @@ export class ProviderKeeperMobile implements Provider {
         );
       default: {
         const txWithFee = await this._prepareTx(tx);
-        return this._signTransaction(txWithFee);
+        const signedTx = await this._signTransaction(txWithFee);
+        return [signedTx] as SignedTx<T>;
       }
     }
   }
@@ -286,7 +288,9 @@ export class ProviderKeeperMobile implements Provider {
     return calculateFee(this._options!.NODE_URL, tx);
   }
 
-  private async _signTransaction(tx: SignerTx) {
+  private async _signTransaction<T extends SignerTx>(
+    tx: T
+  ): Promise<SignerTxToSignedTx<T>> {
     const signedJson = await this._performRequest(
       RpcMethods.signTransaction,
       JSON.stringify(tx)
