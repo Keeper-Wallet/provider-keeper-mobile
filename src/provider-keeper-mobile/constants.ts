@@ -11,5 +11,5 @@ export const DEFAULT_METADATA = {
   name: 'Provider Keeper Mobile',
   description: 'Provider Keeper Mobile for WalletConnect',
   url: window.location.origin,
-  icons: ['https://avatars.githubusercontent.com/u/37784886'],
+  icons: ['https://avatars.githubusercontent.com/u/96250405'],
 };
