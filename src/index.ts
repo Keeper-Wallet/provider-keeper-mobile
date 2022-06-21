@@ -28,26 +28,26 @@ const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
 class KeeperMobile implements Provider {
   user: UserData | null = null;
 
-  private readonly _emitter: EventEmitter<AuthEvents> =
+  private readonly emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
-  protected _clientPromise: Promise<Client>;
-  private _loginReject: ((err: Error) => void) | undefined;
-  private _session: SessionTypes.Settled | undefined;
-  private _options: ConnectOptions | undefined;
+  protected clientPromise: Promise<Client>;
+  private loginReject: ((err: Error) => void) | undefined;
+  private session: SessionTypes.Settled | undefined;
+  private options: ConnectOptions | undefined;
 
   constructor() {
-    this._clientPromise = Client.init({
+    this.clientPromise = Client.init({
       logger: 'debug',
       relayUrl: process.env.RELAY_URL,
       projectId: process.env.PROJECT_ID,
     });
-    this._clientPromise
-      .then(() => this._subscribeToEvents())
-      .then(() => this._checkPersistedState());
+    this.clientPromise
+      .then(() => this.subscribeToEvents())
+      .then(() => this.checkPersistedState());
   }
 
-  private async _subscribeToEvents() {
-    let _client = await this._clientPromise;
+  private async subscribeToEvents() {
+    let _client = await this.clientPromise;
 
     if (typeof _client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
@@ -60,7 +60,7 @@ class KeeperMobile implements Provider {
 
         QRCodeModal.open(
           uri,
-          () => this._loginReject!(new Error('Cancelled by user')),
+          () => this.loginReject!(new Error('Cancelled by user')),
           {
             mobileLinks: ['https://keeper-wallet.app'],
             desktopLinks: [],
@@ -75,28 +75,28 @@ class KeeperMobile implements Provider {
       CLIENT_EVENTS.session.updated,
       (updatedSession: SessionTypes.Settled) => {
         console.log('EVENT', 'session_updated');
-        this._onSessionConnected(updatedSession);
+        this.onSessionConnected(updatedSession);
       }
     );
 
     _client.on(CLIENT_EVENTS.session.deleted, () => {
       console.log('EVENT', 'session_deleted');
-      this._reset();
+      this.reset();
     });
   }
 
-  private _reset() {
-    this._session = undefined;
+  private reset() {
+    this.session = undefined;
   }
 
-  private async _checkPersistedState() {
-    let _client = await this._clientPromise;
+  private async checkPersistedState() {
+    let _client = await this.clientPromise;
 
     if (typeof _client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
     }
 
-    if (typeof this._session !== 'undefined') return;
+    if (typeof this.session !== 'undefined') return;
 
     if (_client.session.topics.length === 0) {
       return;
@@ -109,29 +109,29 @@ class KeeperMobile implements Provider {
     }
 
     const _session = await _client.session.get(topic);
-    this._onSessionConnected(_session);
+    this.onSessionConnected(_session);
   }
 
-  private _onSessionConnected(session: SessionTypes.Settled) {
-    this._session = session;
+  private onSessionConnected(session: SessionTypes.Settled) {
+    this.session = session;
     // this.user = this._userDataFromSession(session);
-    this.user = this._userDataFromSession(session);
+    this.user = this.userDataFromSession(session);
     localStorage.setItem(LAST_TOPIC_KEY, session.topic);
-    this._emitter.trigger('login', this.user);
+    this.emitter.trigger('login', this.user);
   }
 
-  private _onSessionDisconnected() {
-    this._session = undefined;
+  private onSessionDisconnected() {
+    this.session = undefined;
     this.user = null;
     localStorage.removeItem(LAST_TOPIC_KEY);
-    this._emitter.trigger('logout', void 0);
+    this.emitter.trigger('logout', void 0);
   }
 
   on<EVENT extends keyof AuthEvents>(
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
-    this._emitter.on(event, handler);
+    this.emitter.on(event, handler);
 
     return this;
   }
@@ -140,7 +140,7 @@ class KeeperMobile implements Provider {
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
-    this._emitter.once(event, handler);
+    this.emitter.once(event, handler);
 
     return this;
   }
@@ -149,28 +149,28 @@ class KeeperMobile implements Provider {
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
-    this._emitter.off(event, handler);
+    this.emitter.off(event, handler);
 
     return this;
   }
 
   async connect(options: ConnectOptions): Promise<void> {
-    this._options = options;
+    this.options = options;
     return Promise.resolve();
   }
 
   login(): Promise<UserData> {
     return new Promise(async (resolve, reject) => {
-      this._loginReject = reject;
-      const _client = await this._clientPromise;
+      this.loginReject = reject;
+      const _client = await this.clientPromise;
 
       if (
-        typeof this._session !== 'undefined' &&
-        this._session.state.accounts.some(
-          sameChainAccount(this._options!.NETWORK_BYTE)
+        typeof this.session !== 'undefined' &&
+        this.session.state.accounts.some(
+          sameChainAccount(this.options!.NETWORK_BYTE)
         )
       ) {
-        this._onSessionConnected(this._session);
+        this.onSessionConnected(this.session);
         return resolve(this.user!);
       }
 
@@ -189,7 +189,7 @@ class KeeperMobile implements Provider {
           },
           permissions: {
             blockchain: {
-              chains: [chainId(this._options!.NETWORK_BYTE)],
+              chains: [chainId(this.options!.NETWORK_BYTE)],
             },
             jsonrpc: {
               methods: Object.values(RPC_METHODS),
@@ -197,17 +197,17 @@ class KeeperMobile implements Provider {
           },
         });
 
-        this._onSessionConnected(session);
+        this.onSessionConnected(session);
         resolve(this.user!);
       } catch (e) {
-        this._loginReject(new Error('Cancelled by peer'));
+        this.loginReject(new Error('Cancelled by peer'));
       }
     });
   }
 
-  private _userDataFromSession(session: SessionTypes.Settled): UserData {
+  private userDataFromSession(session: SessionTypes.Settled): UserData {
     const [, networkCode, publicKey] = session.state.accounts
-      .find(sameChainAccount(this._options!.NETWORK_BYTE))!
+      .find(sameChainAccount(this.options!.NETWORK_BYTE))!
       .split(':');
 
     return {
@@ -218,16 +218,16 @@ class KeeperMobile implements Provider {
 
   logout(): Promise<void> {
     return new Promise(async resolve => {
-      if (typeof this._session === 'undefined') {
+      if (typeof this.session === 'undefined') {
         return;
       }
 
-      const _client = await this._clientPromise;
+      const _client = await this.clientPromise;
       await _client.disconnect({
-        topic: this._session.topic,
+        topic: this.session.topic,
         reason: ERROR.USER_DISCONNECTED.format(),
       });
-      this._onSessionDisconnected();
+      this.onSessionDisconnected();
       resolve();
     });
   }
@@ -258,26 +258,26 @@ class KeeperMobile implements Provider {
           'Only transfer and invoke script transactions are supported'
         );
       default: {
-        const txWithFee = await this._prepareTx(tx);
-        const signedTx = await this._signTransaction(txWithFee);
+        const txWithFee = await this.prepareTx(tx);
+        const signedTx = await this.signTransaction(txWithFee);
         return [signedTx] as SignedTx<T>;
       }
     }
   }
 
-  private async _prepareTx(
+  private async prepareTx(
     tx: SignerTx & { chainId?: number }
   ): Promise<SignerTx> {
-    tx.chainId = this._options!.NETWORK_BYTE;
+    tx.chainId = this.options!.NETWORK_BYTE;
     tx.senderPublicKey = tx.senderPublicKey || this.user!.publicKey;
 
     return tx;
   }
 
-  private async _signTransaction<T extends SignerTx>(
+  private async signTransaction<T extends SignerTx>(
     tx: T
   ): Promise<SignerTxToSignedTx<T>> {
-    const signedJson = await this._performRequest(
+    const signedJson = await this.performRequest(
       RPC_METHODS.signTransaction,
       JSON.stringify(tx)
     );
@@ -286,28 +286,28 @@ class KeeperMobile implements Provider {
   }
 
   async signMessage(data: string | number): Promise<string> {
-    return await this._performRequest(
+    return await this.performRequest(
       RPC_METHODS.signMessage,
       JSON.stringify(String(data))
     );
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
-    return await this._performRequest(
+    return await this.performRequest(
       RPC_METHODS.signTypedData,
       JSON.stringify(data)
     );
   }
 
-  private async _performRequest(
+  private async performRequest(
     method: RPC_METHODS,
     params: string
   ): Promise<string> {
-    const _client = await this._clientPromise;
+    const _client = await this.clientPromise;
 
     return await _client!.request({
-      topic: this._session!.topic,
-      chainId: chainId(this._options!.NETWORK_BYTE),
+      topic: this.session!.topic,
+      chainId: chainId(this.options!.NETWORK_BYTE),
       request: { method, params },
     });
   }
