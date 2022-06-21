@@ -1,4 +1,4 @@
-import provider from '../../package.json';
+import provider from '../package.json';
 
 export enum RPC_METHODS {
   signTransaction = 'waves_signTransaction',
