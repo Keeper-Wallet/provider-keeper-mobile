@@ -26,7 +26,7 @@ enum RPC_METHODS {
 const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
 
 class KeeperMobile implements Provider {
-  public user: UserData | null = null;
+  user: UserData | null = null;
 
   private readonly _emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
@@ -127,7 +127,7 @@ class KeeperMobile implements Provider {
     this._emitter.trigger('logout', void 0);
   }
 
-  public on<EVENT extends keyof AuthEvents>(
+  on<EVENT extends keyof AuthEvents>(
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
@@ -136,7 +136,7 @@ class KeeperMobile implements Provider {
     return this;
   }
 
-  public once<EVENT extends keyof AuthEvents>(
+  once<EVENT extends keyof AuthEvents>(
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
@@ -145,7 +145,7 @@ class KeeperMobile implements Provider {
     return this;
   }
 
-  public off<EVENT extends keyof AuthEvents>(
+  off<EVENT extends keyof AuthEvents>(
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
@@ -154,12 +154,12 @@ class KeeperMobile implements Provider {
     return this;
   }
 
-  public async connect(options: ConnectOptions): Promise<void> {
+  async connect(options: ConnectOptions): Promise<void> {
     this._options = options;
     return Promise.resolve();
   }
 
-  public login(): Promise<UserData> {
+  login(): Promise<UserData> {
     return new Promise(async (resolve, reject) => {
       this._loginReject = reject;
       const _client = await this._clientPromise;
@@ -216,7 +216,7 @@ class KeeperMobile implements Provider {
     };
   }
 
-  public logout(): Promise<void> {
+  logout(): Promise<void> {
     return new Promise(async resolve => {
       if (typeof this._session === 'undefined') {
         return;
@@ -232,10 +232,8 @@ class KeeperMobile implements Provider {
     });
   }
 
-  public async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
-  public async sign<T extends Array<SignerTx>>(
-    toSign: T
-  ): Promise<SignedTx<T>> {
+  async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
+  async sign<T extends Array<SignerTx>>(toSign: T): Promise<SignedTx<T>> {
     if (toSign.length != 1) {
       throw new Error('Multiple signature not supported');
     }
@@ -287,14 +285,14 @@ class KeeperMobile implements Provider {
     return JSON.parse(signedJson);
   }
 
-  public async signMessage(data: string | number): Promise<string> {
+  async signMessage(data: string | number): Promise<string> {
     return await this._performRequest(
       RPC_METHODS.signMessage,
       JSON.stringify(String(data))
     );
   }
 
-  public async signTypedData(data: Array<TypedData>): Promise<string> {
+  async signTypedData(data: Array<TypedData>): Promise<string> {
     return await this._performRequest(
       RPC_METHODS.signTypedData,
       JSON.stringify(data)
