@@ -1,12 +1,12 @@
 const { ProvidePlugin } = require('webpack');
 const DotenvPlugin = require('dotenv-webpack');
+const rimraf = require('rimraf');
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   entry: './src/index.ts',
-  mode: 'development',
-  devtool: 'inline-source-map',
+  mode: 'production',
+  devtool: 'inline-cheap-module-source-map',
   module: {
     rules: [
       {
@@ -15,20 +15,30 @@ module.exports = {
       },
     ],
   },
+  externals: {
+    ['@waves/signer']: { root: '@waves/signer' },
+    ['@waves/ts-lib-crypto']: { root: '@waves/ts-lib-crypto' },
+    ['@waves/ts-types']: { root: '@waves/ts-types' },
+    'typed-ts-events': 'typed-ts-events',
+  },
   resolve: {
     extensions: ['.ts', '.js'],
   },
   output: {
-    filename: 'bundle.js',
+    filename: 'index.module.js',
     path: path.resolve(__dirname, 'dist'),
   },
   plugins: [
-    new HtmlWebpackPlugin({
-      template: './src/index.html',
-    }),
     new ProvidePlugin({
       Buffer: ['buffer', 'Buffer'],
     }),
     new DotenvPlugin({ path: './.env.local' }),
+    new (class {
+      apply(compiler) {
+        compiler.hooks.done.tap('Remove LICENSE', () => {
+          rimraf.sync('./dist/*.LICENSE.txt');
+        });
+      }
+    })(),
   ],
 };

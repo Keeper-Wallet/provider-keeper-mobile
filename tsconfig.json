@@ -12,8 +12,8 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": false,
     "noImplicitReturns": true,
-    /*"noUnusedLocals": false,
-    "noUnusedParameters": true,*/
+    "noUnusedLocals": false,
+    "noUnusedParameters": true,
     "outDir": "./dist",
     "pretty": true,
     "resolveJsonModule": true,
