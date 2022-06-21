@@ -36,19 +36,21 @@ class KeeperMobile implements Provider {
   private options: ConnectOptions | undefined;
 
   constructor() {
-    this.clientPromise = Client.init({
-      logger: 'debug',
-      relayUrl: process.env.RELAY_URL,
-      projectId: process.env.PROJECT_ID,
+    this.clientPromise = new Promise(async resolve => {
+      const client = await Client.init({
+        logger: 'debug',
+        relayUrl: process.env.RELAY_URL,
+        projectId: process.env.PROJECT_ID,
+      });
+
+      await this.subscribeToEvents(client);
+      await this.checkPersistedState(client);
+
+      resolve(client);
     });
-    this.clientPromise
-      .then(() => this.subscribeToEvents())
-      .then(() => this.checkPersistedState());
   }
 
-  private async subscribeToEvents() {
-    let client = await this.clientPromise;
-
+  private async subscribeToEvents(client: Client) {
     if (typeof client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
     }
@@ -89,9 +91,7 @@ class KeeperMobile implements Provider {
     this.session = undefined;
   }
 
-  private async checkPersistedState() {
-    let client = await this.clientPromise;
-
+  private async checkPersistedState(client: Client) {
     if (typeof client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
     }
