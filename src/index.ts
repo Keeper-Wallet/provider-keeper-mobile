@@ -47,13 +47,13 @@ class KeeperMobile implements Provider {
   }
 
   private async subscribeToEvents() {
-    let _client = await this.clientPromise;
+    let client = await this.clientPromise;
 
-    if (typeof _client === 'undefined') {
+    if (typeof client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
     }
 
-    _client.on(
+    client.on(
       CLIENT_EVENTS.pairing.proposal,
       async (proposal: PairingTypes.Proposal) => {
         const { uri } = proposal.signal.params;
@@ -69,9 +69,9 @@ class KeeperMobile implements Provider {
       }
     );
 
-    _client.on(CLIENT_EVENTS.pairing.created, () => QRCodeModal.close());
+    client.on(CLIENT_EVENTS.pairing.created, () => QRCodeModal.close());
 
-    _client.on(
+    client.on(
       CLIENT_EVENTS.session.updated,
       (updatedSession: SessionTypes.Settled) => {
         console.log('EVENT', 'session_updated');
@@ -79,7 +79,7 @@ class KeeperMobile implements Provider {
       }
     );
 
-    _client.on(CLIENT_EVENTS.session.deleted, () => {
+    client.on(CLIENT_EVENTS.session.deleted, () => {
       console.log('EVENT', 'session_deleted');
       this.reset();
     });
@@ -90,26 +90,26 @@ class KeeperMobile implements Provider {
   }
 
   private async checkPersistedState() {
-    let _client = await this.clientPromise;
+    let client = await this.clientPromise;
 
-    if (typeof _client === 'undefined') {
+    if (typeof client === 'undefined') {
       throw new Error('WalletConnect is not initialized');
     }
 
     if (typeof this.session !== 'undefined') return;
 
-    if (_client.session.topics.length === 0) {
+    if (client.session.topics.length === 0) {
       return;
     }
 
     const topic = localStorage.getItem(LAST_TOPIC_KEY);
 
-    if (topic == null || !_client.session.topics.includes(topic)) {
+    if (topic == null || !client.session.topics.includes(topic)) {
       return;
     }
 
-    const _session = await _client.session.get(topic);
-    this.onSessionConnected(_session);
+    const session = await client.session.get(topic);
+    this.onSessionConnected(session);
   }
 
   private onSessionConnected(session: SessionTypes.Settled) {
@@ -162,7 +162,7 @@ class KeeperMobile implements Provider {
   login(): Promise<UserData> {
     return new Promise(async (resolve, reject) => {
       this.loginReject = reject;
-      const _client = await this.clientPromise;
+      const client = await this.clientPromise;
 
       if (
         typeof this.session !== 'undefined' &&
@@ -177,7 +177,7 @@ class KeeperMobile implements Provider {
       const appMeta = getAppMetadata();
 
       try {
-        const session = await _client.connect({
+        const session = await client.connect({
           metadata: {
             name: appMeta?.name || 'DApp',
             description: appMeta?.description || 'DApp',
@@ -222,8 +222,8 @@ class KeeperMobile implements Provider {
         return;
       }
 
-      const _client = await this.clientPromise;
-      await _client.disconnect({
+      const client = await this.clientPromise;
+      await client.disconnect({
         topic: this.session.topic,
         reason: ERROR.USER_DISCONNECTED.format(),
       });
@@ -303,9 +303,9 @@ class KeeperMobile implements Provider {
     method: RPC_METHODS,
     params: string
   ): Promise<string> {
-    const _client = await this.clientPromise;
+    const client = await this.clientPromise;
 
-    return await _client!.request({
+    return await client!.request({
       topic: this.session!.topic,
       chainId: chainId(this.options!.NETWORK_BYTE),
       request: { method, params },
