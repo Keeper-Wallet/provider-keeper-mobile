@@ -3,6 +3,7 @@
     "allowSyntheticDefaultImports": true,
     "declaration": true,
     "emitDeclarationOnly": true,
+    "incremental": false,
     "isolatedModules": true,
     "lib": ["esnext", "dom"],
     "module": "esnext",
@@ -14,9 +15,9 @@
     "noUnusedLocals": false,
     "noUnusedParameters": true,
     "outDir": "../dist",
-    "rootDir": ".",
     "pretty": true,
     "resolveJsonModule": true,
+    "rootDir": ".",
     "sourceMap": true,
     "strict": true,
     "target": "esnext"
