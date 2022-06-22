@@ -1,3 +1,4 @@
+/* eslint @typescript-eslint/no-var-requires: "off" */
 const { ProvidePlugin } = require('webpack');
 const DotenvPlugin = require('dotenv-webpack');
 const rimraf = require('rimraf');
