@@ -10,12 +10,6 @@ Install using npm:
 npm install @keeper-wallet/provider-keeper-mobile
 ```
 
-Or yarn:
-
-```bash
-yarn add @keeper-wallet/provider-keeper-mobile
-```
-
 ## Usage
 
 - For Testnet:
