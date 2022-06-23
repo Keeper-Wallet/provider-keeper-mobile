@@ -20,7 +20,7 @@ module.exports = {
     ['@waves/signer']: { root: '@waves/signer' },
     ['@waves/ts-lib-crypto']: { root: '@waves/ts-lib-crypto' },
     ['@waves/ts-types']: { root: '@waves/ts-types' },
-    'typed-ts-events': 'typed-ts-events',
+    ['typed-ts-events']: { root: 'typed-ts-events' },
   },
   resolve: {
     extensions: ['.ts', '.js'],
