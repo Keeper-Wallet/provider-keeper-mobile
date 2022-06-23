@@ -3,7 +3,7 @@
     "composite": true,
     "outDir": ".",
     "resolveJsonModule": true,
-    "rootDir": ".",
+    "rootDir": "."
   },
   "files": ["package.json"]
 }
