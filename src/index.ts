@@ -25,7 +25,7 @@ enum RPC_METHODS {
 }
 const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
 
-class KeeperMobile implements Provider {
+export class ProviderKeeperMobile implements Provider {
   user: UserData | null = null;
 
   private readonly emitter: EventEmitter<AuthEvents> =
@@ -331,5 +331,4 @@ function sameChainAccount(networkByte: number) {
   };
 }
 
-export const ProviderKeeperMobile = KeeperMobile;
-export default KeeperMobile;
+export default ProviderKeeperMobile;
