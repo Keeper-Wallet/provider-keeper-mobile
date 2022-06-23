@@ -4,7 +4,7 @@
   "repository": "https://github.com/Keeper-Wallet/provider-keeper-mobile",
   "author": "Sergey Melnikov <asmelnikovse@gmail.com>",
   "license": "MIT",
-  "module": "dist/index.module.js",
+  "main": "dist/provider-keeper-mobile.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",

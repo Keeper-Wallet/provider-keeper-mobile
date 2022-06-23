@@ -12,10 +12,10 @@ import { EventEmitter } from 'typed-ts-events';
 import { TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { ERROR, getAppMetadata } from '@walletconnect/utils';
-import { PairingTypes, SessionTypes } from '@walletconnect/types';
+import type { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
-import { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
+import type { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
 import provider from '../package.json';
 
 enum RPC_METHODS {

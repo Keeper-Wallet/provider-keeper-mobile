@@ -16,17 +16,14 @@ module.exports = {
       },
     ],
   },
-  externals: {
-    ['@waves/signer']: { root: '@waves/signer' },
-    ['@waves/ts-lib-crypto']: { root: '@waves/ts-lib-crypto' },
-    ['@waves/ts-types']: { root: '@waves/ts-types' },
-    ['typed-ts-events']: { root: 'typed-ts-events' },
-  },
   resolve: {
     extensions: ['.ts', '.js'],
   },
   output: {
-    filename: 'index.module.js',
+    libraryTarget: 'umd',
+    globalObject: 'this',
+    library: 'providerKeeperMobile',
+    filename: 'provider-keeper-mobile.js',
     path: path.resolve(__dirname, 'dist'),
   },
   plugins: [
