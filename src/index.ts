@@ -36,17 +36,15 @@ class KeeperMobile implements Provider {
   private options: ConnectOptions | undefined;
 
   constructor() {
-    this.clientPromise = new Promise(async resolve => {
-      const client = await Client.init({
-        logger: 'debug',
-        relayUrl: process.env.RELAY_URL,
-        projectId: process.env.PROJECT_ID,
-      });
-
+    this.clientPromise = Client.init({
+      logger: 'debug',
+      relayUrl: process.env.RELAY_URL,
+      projectId: process.env.PROJECT_ID,
+    }).then(async client => {
       await this.subscribeToEvents(client);
       await this.checkPersistedState(client);
 
-      resolve(client);
+      return client;
     });
   }
 
@@ -114,7 +112,6 @@ class KeeperMobile implements Provider {
 
   private onSessionConnected(session: SessionTypes.Settled) {
     this.session = session;
-    // this.user = this._userDataFromSession(session);
     this.user = this.userDataFromSession(session);
     localStorage.setItem(LAST_TOPIC_KEY, session.topic);
     this.emitter.trigger('login', this.user);
@@ -160,10 +157,7 @@ class KeeperMobile implements Provider {
   }
 
   login(): Promise<UserData> {
-    return new Promise(async (resolve, reject) => {
-      this.loginReject = reject;
-      const client = await this.clientPromise;
-
+    return new Promise((resolve, reject) => {
       if (
         typeof this.session !== 'undefined' &&
         this.session.state.accounts.some(
@@ -174,34 +168,37 @@ class KeeperMobile implements Provider {
         return resolve(this.user!);
       }
 
-      const appMeta = getAppMetadata();
+      this.clientPromise.then(async client => {
+        this.loginReject = reject;
+        const appMeta = getAppMetadata();
 
-      try {
-        const session = await client.connect({
-          metadata: {
-            name: appMeta?.name || 'DApp',
-            description: appMeta?.description || 'DApp',
-            url: appMeta?.url || window.location.origin,
-            icons:
-              appMeta?.icons && appMeta?.icons.length !== 0
-                ? appMeta.icons
-                : ['https://avatars.githubusercontent.com/u/96250405'],
-          },
-          permissions: {
-            blockchain: {
-              chains: [chainId(this.options!.NETWORK_BYTE)],
+        try {
+          const session = await client.connect({
+            metadata: {
+              name: appMeta?.name || 'DApp',
+              description: appMeta?.description || 'DApp',
+              url: appMeta?.url || window.location.origin,
+              icons:
+                appMeta?.icons && appMeta?.icons.length !== 0
+                  ? appMeta.icons
+                  : ['https://avatars.githubusercontent.com/u/96250405'],
             },
-            jsonrpc: {
-              methods: Object.values(RPC_METHODS),
+            permissions: {
+              blockchain: {
+                chains: [chainId(this.options!.NETWORK_BYTE)],
+              },
+              jsonrpc: {
+                methods: Object.values(RPC_METHODS),
+              },
             },
-          },
-        });
+          });
 
-        this.onSessionConnected(session);
-        resolve(this.user!);
-      } catch (e) {
-        this.loginReject(new Error('Cancelled by peer'));
-      }
+          this.onSessionConnected(session);
+          resolve(this.user!);
+        } catch (e) {
+          this.loginReject(new Error('Cancelled by peer'));
+        }
+      });
     });
   }
 
@@ -217,19 +214,18 @@ class KeeperMobile implements Provider {
   }
 
   logout(): Promise<void> {
-    return new Promise(async resolve => {
-      if (typeof this.session === 'undefined') {
-        return;
-      }
+    if (typeof this.session === 'undefined') {
+      return Promise.resolve();
+    }
 
-      const client = await this.clientPromise;
-      await client.disconnect({
-        topic: this.session.topic,
-        reason: ERROR.USER_DISCONNECTED.format(),
-      });
-      this.onSessionDisconnected();
-      resolve();
-    });
+    return this.clientPromise
+      .then(client =>
+        client.disconnect({
+          topic: this.session!.topic,
+          reason: ERROR.USER_DISCONNECTED.format(),
+        })
+      )
+      .then(this.onSessionDisconnected);
   }
 
   async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
