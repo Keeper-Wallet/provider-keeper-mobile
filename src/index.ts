@@ -37,7 +37,7 @@ class KeeperMobile implements Provider {
 
   constructor() {
     this.clientPromise = Client.init({
-      logger: 'debug',
+      logger: process.env.LOG_LEVEL,
       relayUrl: process.env.RELAY_URL,
       projectId: process.env.PROJECT_ID,
     }).then(async client => {
@@ -254,8 +254,11 @@ class KeeperMobile implements Provider {
           'Only transfer and invoke script transactions are supported'
         );
       default: {
+        await this.login();
+
         const txWithFee = await this.prepareTx(tx);
         const signedTx = await this.signTransaction(txWithFee);
+
         return [signedTx] as SignedTx<T>;
       }
     }
@@ -282,6 +285,8 @@ class KeeperMobile implements Provider {
   }
 
   async signMessage(data: string | number): Promise<string> {
+    await this.login();
+
     return await this.performRequest(
       RPC_METHODS.signMessage,
       JSON.stringify(String(data))
@@ -289,6 +294,8 @@ class KeeperMobile implements Provider {
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
+    await this.login();
+
     return await this.performRequest(
       RPC_METHODS.signTypedData,
       JSON.stringify(data)
