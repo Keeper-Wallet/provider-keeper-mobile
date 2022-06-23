@@ -16,7 +16,7 @@ npm install @keeper-wallet/provider-keeper-mobile
 
   ```js
   import { Signer } from '@waves/signer';
-  import { ProviderKeeperMobile } from '@/provider-keeper';
+  import { ProviderKeeperMobile } from '@keeper-wallet/provider-keeper-mobile';
 
   const signer = new Signer({
     // Specify URL of the node on Testnet
@@ -30,7 +30,7 @@ npm install @keeper-wallet/provider-keeper-mobile
 
   ```js
   import { Signer } from '@waves/signer';
-  import { ProviderKeeperMobile } from '@waves/provider-keeper';
+  import { ProviderKeeperMobile } from '@keeper-wallet/provider-keeper-mobile';
 
   const signer = new Signer();
   const keeperMobile = new ProviderKeeper();
