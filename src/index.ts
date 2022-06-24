@@ -30,7 +30,7 @@ export class ProviderKeeperMobile implements Provider {
   private readonly emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
   protected clientPromise: Promise<Client>;
-  private loginReject: ((err: Error) => void) | undefined;
+  private loginReject: ((err: unknown) => void) | undefined;
   private session: SessionTypes.Settled | undefined;
   private options: ConnectOptions | undefined;
 
@@ -188,8 +188,8 @@ export class ProviderKeeperMobile implements Provider {
 
           this.onSessionConnected(session);
           resolve(this.user!);
-        } catch (e) {
-          this.loginReject(new Error('Cancelled by peer'));
+        } catch (err) {
+          this.loginReject(err);
         }
       });
     });
