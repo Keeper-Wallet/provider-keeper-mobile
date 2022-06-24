@@ -12,7 +12,11 @@ import { EventEmitter } from 'typed-ts-events';
 import { TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { ERROR, getAppMetadata } from '@walletconnect/utils';
-import type { PairingTypes, SessionTypes } from '@walletconnect/types';
+import type {
+  PairingTypes,
+  SessionTypes,
+  AppMetadata,
+} from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 import type { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
@@ -29,12 +33,28 @@ export class ProviderKeeperMobile implements Provider {
 
   private readonly emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
+  protected metadata: AppMetadata;
   protected clientPromise: Promise<Client>;
   private loginReject: ((err: unknown) => void) | undefined;
   private session: SessionTypes.Settled | undefined;
   private options: ConnectOptions | undefined;
 
-  constructor() {
+  constructor(meta?: { name?: string; icon?: string }) {
+    const appMeta = getAppMetadata();
+    const name = meta?.name || appMeta?.name || window.location.origin;
+    const icons = meta?.icon
+      ? [meta.icon]
+      : appMeta?.icons && appMeta?.icons.length !== 0
+      ? appMeta.icons
+      : ['https://avatars.githubusercontent.com/u/96250405'];
+
+    this.metadata = {
+      name,
+      description: '',
+      url: appMeta?.url || window.location.origin,
+      icons,
+    };
+
     this.clientPromise = Client.init({
       logger: process.env.LOG_LEVEL,
       relayUrl: process.env.RELAY_URL,
@@ -163,19 +183,10 @@ export class ProviderKeeperMobile implements Provider {
 
       this.clientPromise.then(async client => {
         this.loginReject = reject;
-        const appMeta = getAppMetadata();
 
         try {
           const session = await client.connect({
-            metadata: {
-              name: appMeta?.name || 'DApp',
-              description: appMeta?.description || 'DApp',
-              url: appMeta?.url || window.location.origin,
-              icons:
-                appMeta?.icons && appMeta?.icons.length !== 0
-                  ? appMeta.icons
-                  : ['https://avatars.githubusercontent.com/u/96250405'],
-            },
+            metadata: this.metadata,
             permissions: {
               blockchain: {
                 chains: [chainId(this.options!.NETWORK_BYTE)],
