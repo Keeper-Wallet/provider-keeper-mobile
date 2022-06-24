@@ -25,6 +25,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup environment
+        shell: bash
+        run: |
+          cat <<EOF > .env
+          RELAY_URL = ${{ secrets.RELAY_URL }}
+          PROJECT_ID = ${{ secrets.PROJECT_ID }}
+          EOF
+
       - name: Build package
         run: npm run build
 
