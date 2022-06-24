@@ -73,19 +73,13 @@ export class ProviderKeeperMobile implements Provider {
     client.on(
       CLIENT_EVENTS.session.updated,
       (updatedSession: SessionTypes.Settled) => {
-        console.log('EVENT', 'session_updated');
         this.onSessionConnected(updatedSession);
       }
     );
 
     client.on(CLIENT_EVENTS.session.deleted, () => {
-      console.log('EVENT', 'session_deleted');
-      this.reset();
+      this.onSessionDisconnected();
     });
-  }
-
-  private reset() {
-    this.session = undefined;
   }
 
   private async checkPersistedState(client: Client) {
