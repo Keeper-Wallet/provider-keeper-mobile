@@ -35,6 +35,7 @@ export class ProviderKeeperMobile implements Provider {
     new EventEmitter<AuthEvents>();
   protected metadata: AppMetadata;
   protected clientPromise: Promise<Client>;
+  private loginPromise: Promise<UserData> | undefined;
   private loginReject: ((err: unknown) => void) | undefined;
   private session: SessionTypes.Settled | undefined;
   private options: ConnectOptions | undefined;
@@ -68,10 +69,6 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async subscribeToEvents(client: Client) {
-    if (typeof client === 'undefined') {
-      throw new Error('WalletConnect is not initialized');
-    }
-
     client.on(
       CLIENT_EVENTS.pairing.proposal,
       async (proposal: PairingTypes.Proposal) => {
@@ -170,40 +167,48 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   login(): Promise<UserData> {
-    return new Promise((resolve, reject) => {
-      if (
-        typeof this.session !== 'undefined' &&
-        this.session.state.accounts.some(
-          sameChainAccount(this.options!.NETWORK_BYTE)
-        )
-      ) {
-        this.onSessionConnected(this.session);
-        return resolve(this.user!);
-      }
-
-      this.clientPromise.then(async client => {
-        this.loginReject = reject;
-
-        try {
-          const session = await client.connect({
-            metadata: this.metadata,
-            permissions: {
-              blockchain: {
-                chains: [chainId(this.options!.NETWORK_BYTE)],
-              },
-              jsonrpc: {
-                methods: Object.values(RPC_METHODS),
-              },
-            },
-          });
-
-          this.onSessionConnected(session);
-          resolve(this.user!);
-        } catch (err) {
-          this.loginReject(err);
+    if (typeof this.loginPromise === 'undefined') {
+      this.loginPromise = new Promise((resolve, reject) => {
+        if (
+          typeof this.session !== 'undefined' &&
+          this.session.state.accounts.some(
+            sameChainAccount(this.options!.NETWORK_BYTE)
+          )
+        ) {
+          this.onSessionConnected(this.session);
+          return resolve(this.user!);
         }
+
+        this.clientPromise.then(async client => {
+          this.loginReject = (err: unknown) => {
+            reject(err);
+            this.loginPromise = undefined;
+          };
+
+          try {
+            const session = await client.connect({
+              metadata: this.metadata,
+              permissions: {
+                blockchain: {
+                  chains: [chainId(this.options!.NETWORK_BYTE)],
+                },
+                jsonrpc: {
+                  methods: Object.values(RPC_METHODS),
+                },
+              },
+            });
+
+            this.onSessionConnected(session);
+            resolve(this.user!);
+            this.loginPromise = undefined;
+          } catch (err) {
+            this.loginReject(err);
+          }
+        });
       });
-    });
+    }
+
+    return this.loginPromise;
   }
 
   private userDataFromSession(session: SessionTypes.Settled): UserData {
