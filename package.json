@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "cleanup": "rimraf dist",
-    "build": "tsc --build src && webpack",
+    "build": "tsc && webpack",
     "start": "webpack-dev-server",
     "eslint:check": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",

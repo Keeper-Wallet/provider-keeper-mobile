@@ -30,7 +30,7 @@ module.exports = {
     new ProvidePlugin({
       Buffer: ['buffer', 'Buffer'],
     }),
-    new DotenvPlugin({ path: './.env.local' }),
+    new DotenvPlugin({ path: './.env' }),
     new (class {
       apply(compiler) {
         compiler.hooks.done.tap('Remove LICENSE', () => {

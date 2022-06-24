@@ -16,14 +16,13 @@ import type { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 import type { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
-import provider from '../package.json';
 
 enum RPC_METHODS {
   signTransaction = 'waves_signTransaction',
   signMessage = 'waves_signMessage',
   signTypedData = 'waves_signTypedData',
 }
-const LAST_TOPIC_KEY = `wc@2:keeper:${provider.version}//topic:last`;
+const LAST_TOPIC_KEY = `wc@2:keeper-mobile//topic:last`;
 
 export class ProviderKeeperMobile implements Provider {
   user: UserData | null = null;
