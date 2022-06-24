@@ -1,17 +1,16 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 const { ProvidePlugin } = require('webpack');
 const DotenvPlugin = require('dotenv-webpack');
-const rimraf = require('rimraf');
+const TerserPlugin = require('terser-webpack-plugin');
 const path = require('path');
 
 module.exports = {
   entry: './src/index.ts',
   mode: 'production',
-  devtool: 'inline-cheap-module-source-map',
   module: {
     rules: [
       {
-        test: /\.tsx?$/,
+        test: /\.ts$/,
         loader: 'babel-loader',
       },
     ],
@@ -26,17 +25,14 @@ module.exports = {
     filename: 'provider-keeper-mobile.js',
     path: path.resolve(__dirname, 'dist'),
   },
+  optimization: {
+    minimize: true,
+    minimizer: [new TerserPlugin({ extractComments: false })],
+  },
   plugins: [
     new ProvidePlugin({
       Buffer: ['buffer', 'Buffer'],
     }),
     new DotenvPlugin({ path: './.env' }),
-    new (class {
-      apply(compiler) {
-        compiler.hooks.done.tap('Remove LICENSE', () => {
-          rimraf.sync('./dist/*.LICENSE.txt');
-        });
-      }
-    })(),
   ],
 };
