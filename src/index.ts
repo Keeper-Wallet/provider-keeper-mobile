@@ -251,7 +251,9 @@ export class ProviderKeeperMobile implements Provider {
       return [signedTx] as SignedTx<T>;
     }
 
-    const preparedToSign = await Promise.all(toSign.map(this.prepareTx));
+    const preparedToSign = await Promise.all(
+      toSign.map(this.prepareTx.bind(this))
+    );
     const signedJson = await this.performRequest(
       RPC_METHODS.signTransactionPackage,
       JSON.stringify(preparedToSign)
