@@ -9,7 +9,6 @@ import {
   UserData,
 } from '@waves/signer';
 import { EventEmitter } from 'typed-ts-events';
-import { TRANSACTION_TYPE } from '@waves/ts-types';
 import Client, { CLIENT_EVENTS } from '@walletconnect/client';
 import { ERROR, getAppMetadata } from '@walletconnect/utils';
 import type {
@@ -19,10 +18,10 @@ import type {
 } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
-import type { SignerTxToSignedTx } from '@waves/signer/dist/cjs/types';
 
 enum RPC_METHODS {
   signTransaction = 'waves_signTransaction',
+  signTransactionPackage = 'waves_signTransactionPackage',
   signMessage = 'waves_signMessage',
   signTypedData = 'waves_signTypedData',
 }
@@ -239,58 +238,35 @@ export class ProviderKeeperMobile implements Provider {
 
   async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
   async sign<T extends Array<SignerTx>>(toSign: T): Promise<SignedTx<T>> {
-    if (toSign.length != 1) {
-      throw new Error('Multiple signature not supported');
+    await this.login();
+
+    if (toSign.length === 1) {
+      const preparedTx = await this.prepareTx(toSign[0]);
+      const signedJson = await this.performRequest(
+        RPC_METHODS.signTransaction,
+        JSON.stringify(preparedTx)
+      );
+      const signedTx = JSON.parse(signedJson);
+
+      return [signedTx] as SignedTx<T>;
     }
 
-    const tx = toSign[0];
+    const preparedToSign = await Promise.all(toSign.map(this.prepareTx));
+    const signedJson = await this.performRequest(
+      RPC_METHODS.signTransactionPackage,
+      JSON.stringify(preparedToSign)
+    );
 
-    switch (tx.type) {
-      case TRANSACTION_TYPE.ISSUE:
-      case TRANSACTION_TYPE.REISSUE:
-      case TRANSACTION_TYPE.BURN:
-      case TRANSACTION_TYPE.LEASE:
-      case TRANSACTION_TYPE.EXCHANGE:
-      case TRANSACTION_TYPE.CANCEL_LEASE:
-      case TRANSACTION_TYPE.ALIAS:
-      case TRANSACTION_TYPE.MASS_TRANSFER:
-      case TRANSACTION_TYPE.DATA:
-      case TRANSACTION_TYPE.SPONSORSHIP:
-      case TRANSACTION_TYPE.SET_SCRIPT:
-      case TRANSACTION_TYPE.SET_ASSET_SCRIPT:
-      case TRANSACTION_TYPE.UPDATE_ASSET_INFO:
-        throw new Error(
-          'Only transfer and invoke script transactions are supported'
-        );
-      default: {
-        await this.login();
-
-        const txWithFee = await this.prepareTx(tx);
-        const signedTx = await this.signTransaction(txWithFee);
-
-        return [signedTx] as SignedTx<T>;
-      }
-    }
+    return JSON.parse(signedJson);
   }
 
   private async prepareTx(
     tx: SignerTx & { chainId?: number }
   ): Promise<SignerTx> {
-    tx.chainId = this.options!.NETWORK_BYTE;
+    tx.chainId = tx.chainId || this.options!.NETWORK_BYTE;
     tx.senderPublicKey = tx.senderPublicKey || this.user!.publicKey;
 
     return tx;
-  }
-
-  private async signTransaction<T extends SignerTx>(
-    tx: T
-  ): Promise<SignerTxToSignedTx<T>> {
-    const signedJson = await this.performRequest(
-      RPC_METHODS.signTransaction,
-      JSON.stringify(tx)
-    );
-
-    return JSON.parse(signedJson);
   }
 
   async signMessage(data: string | number): Promise<string> {
