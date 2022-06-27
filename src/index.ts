@@ -39,7 +39,7 @@ export class ProviderKeeperMobile implements Provider {
   private session: SessionTypes.Settled | undefined;
   private options: ConnectOptions | undefined;
 
-  constructor(meta?: { name?: string; icon?: string }) {
+  constructor(meta?: { name?: string; description?: string; icon?: string }) {
     const appMeta = getAppMetadata();
     const name = meta?.name || appMeta?.name || window.location.origin;
     const icons = meta?.icon
@@ -50,7 +50,7 @@ export class ProviderKeeperMobile implements Provider {
 
     this.metadata = {
       name,
-      description: '',
+      description: meta?.description || window.location.origin,
       url: appMeta?.url || window.location.origin,
       icons,
     };
