@@ -274,19 +274,13 @@ export class ProviderKeeperMobile implements Provider {
   async signMessage(data: string | number): Promise<string> {
     await this.login();
 
-    return await this.performRequest(
-      RPC_METHODS.signMessage,
-      JSON.stringify(String(data))
-    );
+    return this.performRequest(RPC_METHODS.signMessage, JSON.stringify(data));
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
     await this.login();
 
-    return await this.performRequest(
-      RPC_METHODS.signTypedData,
-      JSON.stringify(data)
-    );
+    return this.performRequest(RPC_METHODS.signTypedData, JSON.stringify(data));
   }
 
   private async performRequest(
