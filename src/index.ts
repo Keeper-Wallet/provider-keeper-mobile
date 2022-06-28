@@ -275,7 +275,10 @@ export class ProviderKeeperMobile implements Provider {
   async signMessage(data: string | number): Promise<string> {
     await this.login();
 
-    return this.performRequest(RpcMethod.signMessage, JSON.stringify(data));
+    const bytes = wavesCrypto.stringToBytes(String(data));
+    const base64 = 'base64:' + wavesCrypto.base64Encode(bytes);
+
+    return this.performRequest(RpcMethod.signMessage, JSON.stringify(base64));
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
