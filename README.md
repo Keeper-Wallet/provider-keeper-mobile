@@ -11,18 +11,19 @@ npm install @keeper-wallet/provider-keeper-mobile
 ```
 
 ## Usage
+
 - #### Provider with app metadata
 
   You can specify some application metadata to display better notifications in Keeper Wallet Mobile.
+
   ```js
   import { ProviderKeeperMobile } from '@keeper-wallet/provider-keeper-mobile';
-  
-  const keeperMobile = new ProviderKeeperMobile(
-    {  // meta: all fields are optional
-      name: 'My dApp', // name of your dApp
-      icon: 'https://avatars.githubusercontent.com/u/96250405' // display icon for your dApp
-    }
-  )
+
+  const keeperMobile = new ProviderKeeperMobile({
+    // meta: all fields are optional
+    name: 'My dApp', // name of your dApp
+    icon: 'https://avatars.githubusercontent.com/u/96250405', // display icon for your dApp
+  });
   ```
 
 - #### For Testnet:
