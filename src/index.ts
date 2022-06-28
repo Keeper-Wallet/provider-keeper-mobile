@@ -19,13 +19,14 @@ import type {
 import QRCodeModal from '@walletconnect/legacy-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 
-enum RPC_METHODS {
+const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
+
+enum RpcMethod {
   signTransaction = 'waves_signTransaction',
   signTransactionPackage = 'waves_signTransactionPackage',
   signMessage = 'waves_signMessage',
   signTypedData = 'waves_signTypedData',
 }
-const LAST_TOPIC_KEY = `wc@2:keeper-mobile//topic:last`;
 
 export class ProviderKeeperMobile implements Provider {
   user: UserData | null = null;
@@ -109,7 +110,7 @@ export class ProviderKeeperMobile implements Provider {
       return;
     }
 
-    const topic = localStorage.getItem(LAST_TOPIC_KEY);
+    const topic = localStorage.getItem(lastTopicKey);
 
     if (topic == null || !client.session.topics.includes(topic)) {
       return;
@@ -122,14 +123,14 @@ export class ProviderKeeperMobile implements Provider {
   private onSessionConnected(session: SessionTypes.Settled) {
     this.session = session;
     this.user = this.userDataFromSession(session);
-    localStorage.setItem(LAST_TOPIC_KEY, session.topic);
+    localStorage.setItem(lastTopicKey, session.topic);
     this.emitter.trigger('login', this.user);
   }
 
   private onSessionDisconnected() {
     this.session = undefined;
     this.user = null;
-    localStorage.removeItem(LAST_TOPIC_KEY);
+    localStorage.removeItem(lastTopicKey);
     this.emitter.trigger('logout', void 0);
   }
 
@@ -192,7 +193,7 @@ export class ProviderKeeperMobile implements Provider {
                   chains: [chainId(this.options!.NETWORK_BYTE)],
                 },
                 jsonrpc: {
-                  methods: Object.values(RPC_METHODS),
+                  methods: Object.values(RpcMethod),
                 },
               },
             });
@@ -243,7 +244,7 @@ export class ProviderKeeperMobile implements Provider {
     if (toSign.length === 1) {
       const preparedTx = await this.prepareTx(toSign[0]);
       const signedJson = await this.performRequest(
-        RPC_METHODS.signTransaction,
+        RpcMethod.signTransaction,
         JSON.stringify(preparedTx)
       );
       const signedTx = JSON.parse(signedJson);
@@ -255,7 +256,7 @@ export class ProviderKeeperMobile implements Provider {
       toSign.map(this.prepareTx.bind(this))
     );
     const signedJson = await this.performRequest(
-      RPC_METHODS.signTransactionPackage,
+      RpcMethod.signTransactionPackage,
       JSON.stringify(preparedToSign)
     );
 
@@ -274,17 +275,17 @@ export class ProviderKeeperMobile implements Provider {
   async signMessage(data: string | number): Promise<string> {
     await this.login();
 
-    return this.performRequest(RPC_METHODS.signMessage, JSON.stringify(data));
+    return this.performRequest(RpcMethod.signMessage, JSON.stringify(data));
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
     await this.login();
 
-    return this.performRequest(RPC_METHODS.signTypedData, JSON.stringify(data));
+    return this.performRequest(RpcMethod.signTypedData, JSON.stringify(data));
   }
 
   private async performRequest(
-    method: RPC_METHODS,
+    method: RpcMethod,
     params: string
   ): Promise<string> {
     const client = await this.clientPromise;
