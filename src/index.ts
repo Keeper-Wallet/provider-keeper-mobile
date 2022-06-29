@@ -35,6 +35,8 @@ export class ProviderKeeperMobile implements Provider {
     new EventEmitter<AuthEvents>();
   protected metadata: AppMetadata;
   protected clientPromise: Promise<Client>;
+  protected connectPromise: Promise<void>;
+  protected connectResolve!: () => void; // initialized in constructor
   private loginPromise: Promise<UserData> | undefined;
   private loginReject: ((err: unknown) => void) | undefined;
   private session: SessionTypes.Settled | undefined;
@@ -62,9 +64,12 @@ export class ProviderKeeperMobile implements Provider {
       projectId: process.env.PROJECT_ID,
     }).then(async client => {
       await this.subscribeToEvents(client);
-      await this.checkPersistedState(client);
 
       return client;
+    });
+
+    this.connectPromise = new Promise(resolve => {
+      this.connectResolve = resolve;
     });
   }
 
@@ -99,11 +104,35 @@ export class ProviderKeeperMobile implements Provider {
     });
   }
 
-  private async checkPersistedState(client: Client) {
-    if (typeof client === 'undefined') {
-      throw new Error('WalletConnect is not initialized');
-    }
+  private onSessionConnected(session: SessionTypes.Settled) {
+    this.session = session;
+    this.user = this.userDataFromSession(session);
+    localStorage.setItem(lastTopicKey, session.topic);
+    this.emitter.trigger('login', this.user);
+  }
 
+  private onSessionDisconnected() {
+    this.session = undefined;
+    this.user = null;
+    localStorage.removeItem(lastTopicKey);
+    this.emitter.trigger('logout', void 0);
+  }
+
+  async connect(options: ConnectOptions): Promise<void> {
+    this.options = options;
+
+    const client = await this.clientPromise;
+    await this.checkPersistedState(client);
+
+    return this.connectResolve();
+  }
+
+  private async ensureClient(): Promise<Client> {
+    await this.connectPromise;
+    return this.clientPromise;
+  }
+
+  private async checkPersistedState(client: Client) {
     if (typeof this.session !== 'undefined') return;
 
     if (client.session.topics.length === 0) {
@@ -118,20 +147,6 @@ export class ProviderKeeperMobile implements Provider {
 
     const session = await client.session.get(topic);
     this.onSessionConnected(session);
-  }
-
-  private onSessionConnected(session: SessionTypes.Settled) {
-    this.session = session;
-    this.user = this.userDataFromSession(session);
-    localStorage.setItem(lastTopicKey, session.topic);
-    this.emitter.trigger('login', this.user);
-  }
-
-  private onSessionDisconnected() {
-    this.session = undefined;
-    this.user = null;
-    localStorage.removeItem(lastTopicKey);
-    this.emitter.trigger('logout', void 0);
   }
 
   on<EVENT extends keyof AuthEvents>(
@@ -161,11 +176,6 @@ export class ProviderKeeperMobile implements Provider {
     return this;
   }
 
-  async connect(options: ConnectOptions): Promise<void> {
-    this.options = options;
-    return Promise.resolve();
-  }
-
   login(): Promise<UserData> {
     if (typeof this.loginPromise === 'undefined') {
       this.loginPromise = new Promise((resolve, reject) => {
@@ -179,7 +189,7 @@ export class ProviderKeeperMobile implements Provider {
           return resolve(this.user!);
         }
 
-        this.clientPromise.then(async client => {
+        this.ensureClient().then(async client => {
           this.loginReject = (err: unknown) => {
             reject(err);
             this.loginPromise = undefined;
@@ -227,7 +237,7 @@ export class ProviderKeeperMobile implements Provider {
       return Promise.resolve();
     }
 
-    return this.clientPromise
+    return this.ensureClient()
       .then(client =>
         client.disconnect({
           topic: this.session!.topic,
@@ -291,7 +301,7 @@ export class ProviderKeeperMobile implements Provider {
     method: RpcMethod,
     params: string
   ): Promise<string> {
-    const client = await this.clientPromise;
+    const client = await this.ensureClient();
 
     return await client!.request({
       topic: this.session!.topic,
