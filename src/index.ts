@@ -192,32 +192,28 @@ export class ProviderKeeperMobile implements Provider {
           this.loginPromise = undefined;
         };
 
-        if (typeof this.session !== 'undefined') {
-          this.onSessionConnected(this.session);
-          return resolve(this.user!);
-        }
-
         this.ensureClient()
           .then(async client => {
-            try {
-              const session = await client.connect({
-                metadata: this.metadata,
-                permissions: {
-                  blockchain: {
-                    chains: [chainId(this.options!.NETWORK_BYTE)],
-                  },
-                  jsonrpc: {
-                    methods: Object.values(RpcMethod),
-                  },
-                },
-              });
-
-              this.onSessionConnected(session);
-              resolve(this.user!);
-              this.loginPromise = undefined;
-            } catch (err) {
-              this.loginReject!(err);
+            if (typeof this.session !== 'undefined') {
+              this.onSessionConnected(this.session);
+              return resolve(this.user!);
             }
+
+            const session = await client.connect({
+              metadata: this.metadata,
+              permissions: {
+                blockchain: {
+                  chains: [chainId(this.options!.NETWORK_BYTE)],
+                },
+                jsonrpc: {
+                  methods: Object.values(RpcMethod),
+                },
+              },
+            });
+
+            this.onSessionConnected(session);
+            resolve(this.user!);
+            this.loginPromise = undefined;
           })
           .catch(err => this.loginReject!(err));
       });
