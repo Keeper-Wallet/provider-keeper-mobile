@@ -187,37 +187,39 @@ export class ProviderKeeperMobile implements Provider {
   login(): Promise<UserData> {
     if (typeof this.loginPromise === 'undefined') {
       this.loginPromise = new Promise((resolve, reject) => {
+        this.loginReject = (err: unknown) => {
+          reject(err);
+          this.loginPromise = undefined;
+        };
+
         if (typeof this.session !== 'undefined') {
           this.onSessionConnected(this.session);
           return resolve(this.user!);
         }
 
-        this.ensureClient().then(async client => {
-          this.loginReject = (err: unknown) => {
-            reject(err);
-            this.loginPromise = undefined;
-          };
-
-          try {
-            const session = await client.connect({
-              metadata: this.metadata,
-              permissions: {
-                blockchain: {
-                  chains: [chainId(this.options!.NETWORK_BYTE)],
+        this.ensureClient()
+          .then(async client => {
+            try {
+              const session = await client.connect({
+                metadata: this.metadata,
+                permissions: {
+                  blockchain: {
+                    chains: [chainId(this.options!.NETWORK_BYTE)],
+                  },
+                  jsonrpc: {
+                    methods: Object.values(RpcMethod),
+                  },
                 },
-                jsonrpc: {
-                  methods: Object.values(RpcMethod),
-                },
-              },
-            });
+              });
 
-            this.onSessionConnected(session);
-            resolve(this.user!);
-            this.loginPromise = undefined;
-          } catch (err) {
-            this.loginReject(err);
-          }
-        });
+              this.onSessionConnected(session);
+              resolve(this.user!);
+              this.loginPromise = undefined;
+            } catch (err) {
+              this.loginReject!(err);
+            }
+          })
+          .catch(err => this.loginReject!(err));
       });
     }
 
