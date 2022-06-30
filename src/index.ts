@@ -112,10 +112,14 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private onSessionDisconnected() {
+    this.clear();
+    this.emitter.trigger('logout', void 0);
+  }
+
+  private clear() {
     this.session = undefined;
     this.user = null;
     localStorage.removeItem(lastTopicKey);
-    this.emitter.trigger('logout', void 0);
   }
 
   async connect(options: ConnectOptions): Promise<void> {
@@ -133,20 +137,24 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async checkPersistedState(client: Client) {
-    if (typeof this.session !== 'undefined') return;
+    if (typeof this.session === 'undefined') {
+      if (client.session.topics.length === 0) return;
 
-    if (client.session.topics.length === 0) {
-      return;
+      const topic = localStorage.getItem(lastTopicKey);
+
+      if (topic == null || !client.session.topics.includes(topic)) return;
+
+      this.session = await client.session.get(topic);
     }
 
-    const topic = localStorage.getItem(lastTopicKey);
+    if (
+      !this.session.state.accounts.some(
+        sameChainAccount(this.options!.NETWORK_BYTE)
+      )
+    )
+      return this.clear();
 
-    if (topic == null || !client.session.topics.includes(topic)) {
-      return;
-    }
-
-    const session = await client.session.get(topic);
-    this.onSessionConnected(session);
+    this.onSessionConnected(this.session);
   }
 
   on<EVENT extends keyof AuthEvents>(
@@ -179,12 +187,7 @@ export class ProviderKeeperMobile implements Provider {
   login(): Promise<UserData> {
     if (typeof this.loginPromise === 'undefined') {
       this.loginPromise = new Promise((resolve, reject) => {
-        if (
-          typeof this.session !== 'undefined' &&
-          this.session.state.accounts.some(
-            sameChainAccount(this.options!.NETWORK_BYTE)
-          )
-        ) {
+        if (typeof this.session !== 'undefined') {
           this.onSessionConnected(this.session);
           return resolve(this.user!);
         }
