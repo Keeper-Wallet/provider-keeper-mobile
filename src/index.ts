@@ -195,7 +195,6 @@ export class ProviderKeeperMobile implements Provider {
         this.ensureClient()
           .then(async client => {
             if (typeof this.session !== 'undefined') {
-              this.onSessionConnected(this.session);
               return resolve(this.user!);
             }
 
