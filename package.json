@@ -19,10 +19,10 @@
     "prettier:fix": "prettier --write ."
   },
   "dependencies": {
-    "@walletconnect/client": "2.0.0-beta.26",
-    "@walletconnect/legacy-modal": "2.0.0-beta.26",
-    "@walletconnect/types": "2.0.0-beta.26",
-    "@walletconnect/utils": "2.0.0-beta.26",
+    "@walletconnect/qrcode-modal": "^1.7.8",
+    "@walletconnect/sign-client": "2.0.0-rc.0",
+    "@walletconnect/types": "2.0.0-rc.0",
+    "@walletconnect/utils": "2.0.0-rc.0",
     "@waves/ts-lib-crypto": "^1.4.4-beta.1",
     "buffer": "^6.0.3",
     "typed-ts-events": "^1.2.1"
