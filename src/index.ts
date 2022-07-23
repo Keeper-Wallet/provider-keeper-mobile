@@ -11,11 +11,7 @@ import {
 import { EventEmitter } from 'typed-ts-events';
 import Client, { CLIENT_EVENTS } from '@walletconnect/sign-client';
 import { getSdkError, getAppMetadata } from '@walletconnect/utils';
-import type {
-  PairingTypes,
-  SessionTypes,
-  AppMetadata,
-} from '@walletconnect/types';
+import type { PairingTypes, SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 
@@ -33,7 +29,6 @@ export class ProviderKeeperMobile implements Provider {
 
   private readonly emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
-  protected metadata: AppMetadata;
   protected clientPromise: Promise<Client>;
   protected connectPromise: Promise<void>;
   protected connectResolve!: () => void; // initialized in constructor
@@ -51,17 +46,16 @@ export class ProviderKeeperMobile implements Provider {
       ? appMeta.icons
       : ['https://avatars.githubusercontent.com/u/96250405'];
 
-    this.metadata = {
-      name,
-      description: meta?.description || window.location.origin,
-      url: appMeta?.url || window.location.origin,
-      icons,
-    };
-
     this.clientPromise = Client.init({
       logger: process.env.LOG_LEVEL,
       relayUrl: process.env.RELAY_URL,
       projectId: process.env.PROJECT_ID,
+      metadata: {
+        name,
+        description: meta?.description || window.location.origin,
+        url: appMeta?.url || window.location.origin,
+        icons,
+      },
     }).then(async client => {
       await this.subscribeToEvents(client);
 
@@ -199,7 +193,6 @@ export class ProviderKeeperMobile implements Provider {
             }
 
             const session = await client.connect({
-              metadata: this.metadata,
               permissions: {
                 blockchain: {
                   chains: [chainId(this.options!.NETWORK_BYTE)],
