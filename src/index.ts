@@ -192,15 +192,17 @@ export class ProviderKeeperMobile implements Provider {
               return resolve(this.user!);
             }
 
-            const session = await client.connect({
-              permissions: {
-                blockchain: {
-                  chains: [chainId(this.options!.NETWORK_BYTE)],
-                },
-                jsonrpc: {
-                  methods: Object.values(RpcMethod),
-                },
+            const requiredNamespaces = {
+              waves: {
+                methods: Object.values(RpcMethod),
+                chains: [chainId(this.options!.NETWORK_BYTE)],
+                events: [],
               },
+            };
+
+            const session = await client.connect({
+              // pairingTopic: pairing?.topic,
+              requiredNamespaces,
             });
 
             this.onSessionConnected(session);
