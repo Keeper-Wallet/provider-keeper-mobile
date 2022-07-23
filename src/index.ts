@@ -9,14 +9,14 @@ import {
   UserData,
 } from '@waves/signer';
 import { EventEmitter } from 'typed-ts-events';
-import Client, { CLIENT_EVENTS } from '@walletconnect/client';
-import { ERROR, getAppMetadata } from '@walletconnect/utils';
+import Client, { CLIENT_EVENTS } from '@walletconnect/sign-client';
+import { getSdkError, getAppMetadata } from '@walletconnect/utils';
 import type {
   PairingTypes,
   SessionTypes,
   AppMetadata,
 } from '@walletconnect/types';
-import QRCodeModal from '@walletconnect/legacy-modal';
+import QRCodeModal from '@walletconnect/qrcode-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 
 const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
@@ -81,7 +81,7 @@ export class ProviderKeeperMobile implements Provider {
 
         QRCodeModal.open(
           uri,
-          () => this.loginReject!(new Error('Cancelled by user')),
+          () => this.loginReject!(getSdkError('USER_REJECTED')),
           {
             mobileLinks: ['https://keeper-wallet.app'],
             desktopLinks: [],
@@ -241,7 +241,7 @@ export class ProviderKeeperMobile implements Provider {
       .then(client =>
         client.disconnect({
           topic: this.session!.topic,
-          reason: ERROR.USER_DISCONNECTED.format(),
+          reason: getSdkError('USER_DISCONNECTED'),
         })
       )
       .then(this.onSessionDisconnected);
