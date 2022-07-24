@@ -9,9 +9,9 @@ import {
   UserData,
 } from '@waves/signer';
 import { EventEmitter } from 'typed-ts-events';
-import Client, { CLIENT_EVENTS } from '@walletconnect/sign-client';
+import Client from '@walletconnect/sign-client';
 import { getSdkError, getAppMetadata } from '@walletconnect/utils';
-import type { PairingTypes, SessionTypes } from '@walletconnect/types';
+import type { SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 
@@ -34,7 +34,7 @@ export class ProviderKeeperMobile implements Provider {
   protected connectResolve!: () => void; // initialized in constructor
   private loginPromise: Promise<UserData> | undefined;
   private loginReject: ((err: unknown) => void) | undefined;
-  private session: SessionTypes.Settled | undefined;
+  private session: SessionTypes.Struct | undefined;
   private options: ConnectOptions | undefined;
 
   constructor(meta?: { name?: string; description?: string; icon?: string }) {
@@ -68,37 +68,19 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async subscribeToEvents(client: Client) {
-    client.on(
-      CLIENT_EVENTS.pairing.proposal,
-      async (proposal: PairingTypes.Proposal) => {
-        const { uri } = proposal.signal.params;
+    client.on('session_update', ({ topic, params }) => {
+      const { namespaces } = params;
+      const _session = client.session.get(topic);
+      const updatedSession = { ..._session, namespaces };
+      this.onSessionConnected(updatedSession);
+    });
 
-        QRCodeModal.open(
-          uri,
-          () => this.loginReject!(getSdkError('USER_REJECTED')),
-          {
-            mobileLinks: ['https://keeper-wallet.app'],
-            desktopLinks: [],
-          }
-        );
-      }
-    );
-
-    client.on(CLIENT_EVENTS.pairing.created, () => QRCodeModal.close());
-
-    client.on(
-      CLIENT_EVENTS.session.updated,
-      (updatedSession: SessionTypes.Settled) => {
-        this.onSessionConnected(updatedSession);
-      }
-    );
-
-    client.on(CLIENT_EVENTS.session.deleted, () => {
+    client.on('session_delete', () => {
       this.onSessionDisconnected();
     });
   }
 
-  private onSessionConnected(session: SessionTypes.Settled) {
+  private onSessionConnected(session: SessionTypes.Struct) {
     this.session = session;
     this.user = this.userDataFromSession(session);
     localStorage.setItem(lastTopicKey, session.topic);
@@ -132,18 +114,18 @@ export class ProviderKeeperMobile implements Provider {
 
   private async checkPersistedState(client: Client) {
     if (typeof this.session === 'undefined') {
-      if (client.session.topics.length === 0) return;
+      if (client.session.length === 0) return;
 
       const topic = localStorage.getItem(lastTopicKey);
 
-      if (topic == null || !client.session.topics.includes(topic)) return;
+      if (topic == null || !client.session.keys.includes(topic)) return;
 
       this.session = await client.session.get(topic);
     }
 
     if (
-      !this.session.state.accounts.some(
-        sameChainAccount(this.options!.NETWORK_BYTE)
+      !this.session.namespaces.waves.accounts.some(
+        withSameChain(this.options!.NETWORK_BYTE)
       )
     )
       return this.clear();
@@ -192,22 +174,41 @@ export class ProviderKeeperMobile implements Provider {
               return resolve(this.user!);
             }
 
-            const requiredNamespaces = {
-              waves: {
-                methods: Object.values(RpcMethod),
-                chains: [chainId(this.options!.NETWORK_BYTE)],
-                events: [],
-              },
-            };
+            try {
+              const requiredNamespaces = {
+                waves: {
+                  methods: Object.values(RpcMethod),
+                  chains: [chainId(this.options!.NETWORK_BYTE)],
+                  events: [],
+                },
+              };
 
-            const session = await client.connect({
-              // pairingTopic: pairing?.topic,
-              requiredNamespaces,
-            });
+              const { uri, approval } = await client.connect({
+                // pairingTopic: pairing?.topic,
+                requiredNamespaces,
+              });
 
-            this.onSessionConnected(session);
-            resolve(this.user!);
-            this.loginPromise = undefined;
+              if (uri) {
+                QRCodeModal.open(
+                  uri,
+                  () => this.loginReject!(getSdkError('USER_REJECTED')),
+                  {
+                    mobileLinks: ['https://keeper-wallet.app'],
+                    desktopLinks: [],
+                  }
+                );
+              }
+
+              const session = await approval();
+
+              this.onSessionConnected(session);
+              resolve(this.user!);
+              this.loginPromise = undefined;
+            } catch (err) {
+              reject(err); // catch rejection
+            } finally {
+              QRCodeModal.close();
+            }
           })
           .catch(err => this.loginReject!(err));
       });
@@ -216,9 +217,9 @@ export class ProviderKeeperMobile implements Provider {
     return this.loginPromise;
   }
 
-  private userDataFromSession(session: SessionTypes.Settled): UserData {
-    const [, networkCode, publicKey] = session.state.accounts
-      .find(sameChainAccount(this.options!.NETWORK_BYTE))!
+  private userDataFromSession(session: SessionTypes.Struct): UserData {
+    const [, networkCode, publicKey] = session.namespaces.waves.accounts
+      .find(withSameChain(this.options!.NETWORK_BYTE))!
       .split(':');
 
     return {
@@ -314,7 +315,7 @@ function chainId(networkByte: number) {
   return `waves:${networkCode(networkByte)}`;
 }
 
-function sameChainAccount(networkByte: number) {
+function withSameChain(networkByte: number) {
   return function (account: string) {
     const [ns, networkCode_] = account.split(':');
     return ns === 'waves' && networkCode_ === networkCode(networkByte);
