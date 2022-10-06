@@ -45,7 +45,6 @@ export class ProviderKeeperMobile implements Provider {
       : appMeta?.icons && appMeta?.icons.length !== 0
       ? appMeta.icons
       : ['https://avatars.githubusercontent.com/u/96250405'];
-
     this.clientPromise = Client.init({
       logger: process.env.LOG_LEVEL,
       relayUrl: process.env.RELAY_URL,
@@ -251,7 +250,7 @@ export class ProviderKeeperMobile implements Provider {
       const preparedTx = await this.prepareTx(toSign[0]);
       const signedJson = await this.performRequest(
         RpcMethod.signTransaction,
-        JSON.stringify(preparedTx)
+        preparedTx
       );
       const signedTx = JSON.parse(signedJson);
 
@@ -263,7 +262,7 @@ export class ProviderKeeperMobile implements Provider {
     );
     const signedJson = await this.performRequest(
       RpcMethod.signTransactionPackage,
-      JSON.stringify(preparedToSign)
+      preparedToSign
     );
 
     return JSON.parse(signedJson);
@@ -284,18 +283,18 @@ export class ProviderKeeperMobile implements Provider {
     const bytes = wavesCrypto.stringToBytes(String(data));
     const base64 = 'base64:' + wavesCrypto.base64Encode(bytes);
 
-    return this.performRequest(RpcMethod.signMessage, JSON.stringify(base64));
+    return this.performRequest(RpcMethod.signMessage, base64);
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
     await this.login();
 
-    return this.performRequest(RpcMethod.signTypedData, JSON.stringify(data));
+    return this.performRequest(RpcMethod.signTypedData, data);
   }
 
   private async performRequest(
     method: RpcMethod,
-    params: string
+    ...params: unknown[]
   ): Promise<string> {
     const client = await this.ensureClient();
 
