@@ -248,11 +248,10 @@ export class ProviderKeeperMobile implements Provider {
 
     if (toSign.length === 1) {
       const preparedTx = await this.prepareTx(toSign[0]);
-      const signedJson = await this.performRequest(
+      const signedTx = await this.performRequest(
         RpcMethod.signTransaction,
         preparedTx
       );
-      const signedTx = JSON.parse(signedJson);
 
       return [signedTx] as SignedTx<T>;
     }
@@ -260,12 +259,11 @@ export class ProviderKeeperMobile implements Provider {
     const preparedToSign = await Promise.all(
       toSign.map(this.prepareTx.bind(this))
     );
-    const signedJson = await this.performRequest(
+
+    return this.performRequest(
       RpcMethod.signTransactionPackage,
       preparedToSign
     );
-
-    return JSON.parse(signedJson);
   }
 
   private async prepareTx(
@@ -292,10 +290,10 @@ export class ProviderKeeperMobile implements Provider {
     return this.performRequest(RpcMethod.signTypedData, data);
   }
 
-  private async performRequest(
+  private async performRequest<T>(
     method: RpcMethod,
     ...params: unknown[]
-  ): Promise<string> {
+  ): Promise<T> {
     const client = await this.ensureClient();
 
     return await client!.request({
