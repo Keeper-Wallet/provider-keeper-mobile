@@ -239,7 +239,7 @@ export class ProviderKeeperMobile implements Provider {
           reason: getSdkError('USER_DISCONNECTED'),
         })
       )
-      .then(this.onSessionDisconnected);
+      .then(() => this.onSessionDisconnected());
   }
 
   async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
