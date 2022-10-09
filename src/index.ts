@@ -9,14 +9,10 @@ import {
   UserData,
 } from '@waves/signer';
 import { EventEmitter } from 'typed-ts-events';
-import Client, { CLIENT_EVENTS } from '@walletconnect/client';
-import { ERROR, getAppMetadata } from '@walletconnect/utils';
-import type {
-  PairingTypes,
-  SessionTypes,
-  AppMetadata,
-} from '@walletconnect/types';
-import QRCodeModal from '@walletconnect/legacy-modal';
+import Client from '@walletconnect/sign-client';
+import { getSdkError, getAppMetadata } from '@walletconnect/utils';
+import type { SessionTypes } from '@walletconnect/types';
+import QRCodeModal from '@walletconnect/qrcode-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 
 const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
@@ -33,13 +29,12 @@ export class ProviderKeeperMobile implements Provider {
 
   private readonly emitter: EventEmitter<AuthEvents> =
     new EventEmitter<AuthEvents>();
-  protected metadata: AppMetadata;
   protected clientPromise: Promise<Client>;
   protected connectPromise: Promise<void>;
   protected connectResolve!: () => void; // initialized in constructor
   private loginPromise: Promise<UserData> | undefined;
   private loginReject: ((err: unknown) => void) | undefined;
-  private session: SessionTypes.Settled | undefined;
+  private session: SessionTypes.Struct | undefined;
   private options: ConnectOptions | undefined;
 
   constructor(meta?: { name?: string; description?: string; icon?: string }) {
@@ -50,18 +45,16 @@ export class ProviderKeeperMobile implements Provider {
       : appMeta?.icons && appMeta?.icons.length !== 0
       ? appMeta.icons
       : ['https://avatars.githubusercontent.com/u/96250405'];
-
-    this.metadata = {
-      name,
-      description: meta?.description || window.location.origin,
-      url: appMeta?.url || window.location.origin,
-      icons,
-    };
-
     this.clientPromise = Client.init({
       logger: process.env.LOG_LEVEL,
       relayUrl: process.env.RELAY_URL,
       projectId: process.env.PROJECT_ID,
+      metadata: {
+        name,
+        description: meta?.description || window.location.origin,
+        url: appMeta?.url || window.location.origin,
+        icons,
+      },
     }).then(async client => {
       await this.subscribeToEvents(client);
 
@@ -74,37 +67,19 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async subscribeToEvents(client: Client) {
-    client.on(
-      CLIENT_EVENTS.pairing.proposal,
-      async (proposal: PairingTypes.Proposal) => {
-        const { uri } = proposal.signal.params;
+    client.on('session_update', ({ topic, params }) => {
+      const { namespaces } = params;
+      const _session = client.session.get(topic);
+      const updatedSession = { ..._session, namespaces };
+      this.onSessionConnected(updatedSession);
+    });
 
-        QRCodeModal.open(
-          uri,
-          () => this.loginReject!(new Error('Cancelled by user')),
-          {
-            mobileLinks: ['https://keeper-wallet.app'],
-            desktopLinks: [],
-          }
-        );
-      }
-    );
-
-    client.on(CLIENT_EVENTS.pairing.created, () => QRCodeModal.close());
-
-    client.on(
-      CLIENT_EVENTS.session.updated,
-      (updatedSession: SessionTypes.Settled) => {
-        this.onSessionConnected(updatedSession);
-      }
-    );
-
-    client.on(CLIENT_EVENTS.session.deleted, () => {
+    client.on('session_delete', () => {
       this.onSessionDisconnected();
     });
   }
 
-  private onSessionConnected(session: SessionTypes.Settled) {
+  private onSessionConnected(session: SessionTypes.Struct) {
     this.session = session;
     this.user = this.userDataFromSession(session);
     localStorage.setItem(lastTopicKey, session.topic);
@@ -138,18 +113,18 @@ export class ProviderKeeperMobile implements Provider {
 
   private async checkPersistedState(client: Client) {
     if (typeof this.session === 'undefined') {
-      if (client.session.topics.length === 0) return;
+      if (client.session.length === 0) return;
 
       const topic = localStorage.getItem(lastTopicKey);
 
-      if (topic == null || !client.session.topics.includes(topic)) return;
+      if (topic == null || !client.session.keys.includes(topic)) return;
 
       this.session = await client.session.get(topic);
     }
 
     if (
-      !this.session.state.accounts.some(
-        sameChainAccount(this.options!.NETWORK_BYTE)
+      !this.session.namespaces.waves.accounts.some(
+        withSameChain(this.options!.NETWORK_BYTE)
       )
     )
       return this.clear();
@@ -198,21 +173,41 @@ export class ProviderKeeperMobile implements Provider {
               return resolve(this.user!);
             }
 
-            const session = await client.connect({
-              metadata: this.metadata,
-              permissions: {
-                blockchain: {
-                  chains: [chainId(this.options!.NETWORK_BYTE)],
-                },
-                jsonrpc: {
+            try {
+              const requiredNamespaces = {
+                waves: {
                   methods: Object.values(RpcMethod),
+                  chains: [chainId(this.options!.NETWORK_BYTE)],
+                  events: [],
                 },
-              },
-            });
+              };
 
-            this.onSessionConnected(session);
-            resolve(this.user!);
-            this.loginPromise = undefined;
+              const { uri, approval } = await client.connect({
+                // pairingTopic: pairing?.topic,
+                requiredNamespaces,
+              });
+
+              if (uri) {
+                QRCodeModal.open(
+                  uri,
+                  () => this.loginReject!(getSdkError('USER_REJECTED')),
+                  {
+                    mobileLinks: ['https://keeper-wallet.app'],
+                    desktopLinks: [],
+                  }
+                );
+              }
+
+              const session = await approval();
+
+              this.onSessionConnected(session);
+              resolve(this.user!);
+              this.loginPromise = undefined;
+            } catch (err) {
+              reject(err); // catch rejection
+            } finally {
+              QRCodeModal.close();
+            }
           })
           .catch(err => this.loginReject!(err));
       });
@@ -221,9 +216,9 @@ export class ProviderKeeperMobile implements Provider {
     return this.loginPromise;
   }
 
-  private userDataFromSession(session: SessionTypes.Settled): UserData {
-    const [, networkCode, publicKey] = session.state.accounts
-      .find(sameChainAccount(this.options!.NETWORK_BYTE))!
+  private userDataFromSession(session: SessionTypes.Struct): UserData {
+    const [, networkCode, publicKey] = session.namespaces.waves.accounts
+      .find(withSameChain(this.options!.NETWORK_BYTE))!
       .split(':');
 
     return {
@@ -241,10 +236,10 @@ export class ProviderKeeperMobile implements Provider {
       .then(client =>
         client.disconnect({
           topic: this.session!.topic,
-          reason: ERROR.USER_DISCONNECTED.format(),
+          reason: getSdkError('USER_DISCONNECTED'),
         })
       )
-      .then(this.onSessionDisconnected);
+      .then(() => this.onSessionDisconnected());
   }
 
   async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
@@ -253,11 +248,10 @@ export class ProviderKeeperMobile implements Provider {
 
     if (toSign.length === 1) {
       const preparedTx = await this.prepareTx(toSign[0]);
-      const signedJson = await this.performRequest(
+      const signedTx = await this.performRequest(
         RpcMethod.signTransaction,
-        JSON.stringify(preparedTx)
+        preparedTx
       );
-      const signedTx = JSON.parse(signedJson);
 
       return [signedTx] as SignedTx<T>;
     }
@@ -265,12 +259,11 @@ export class ProviderKeeperMobile implements Provider {
     const preparedToSign = await Promise.all(
       toSign.map(this.prepareTx.bind(this))
     );
-    const signedJson = await this.performRequest(
-      RpcMethod.signTransactionPackage,
-      JSON.stringify(preparedToSign)
-    );
 
-    return JSON.parse(signedJson);
+    return this.performRequest(
+      RpcMethod.signTransactionPackage,
+      preparedToSign
+    );
   }
 
   private async prepareTx(
@@ -288,19 +281,19 @@ export class ProviderKeeperMobile implements Provider {
     const bytes = wavesCrypto.stringToBytes(String(data));
     const base64 = 'base64:' + wavesCrypto.base64Encode(bytes);
 
-    return this.performRequest(RpcMethod.signMessage, JSON.stringify(base64));
+    return this.performRequest(RpcMethod.signMessage, base64);
   }
 
   async signTypedData(data: Array<TypedData>): Promise<string> {
     await this.login();
 
-    return this.performRequest(RpcMethod.signTypedData, JSON.stringify(data));
+    return this.performRequest(RpcMethod.signTypedData, data);
   }
 
-  private async performRequest(
+  private async performRequest<T>(
     method: RpcMethod,
-    params: string
-  ): Promise<string> {
+    ...params: unknown[]
+  ): Promise<T> {
     const client = await this.ensureClient();
 
     return await client!.request({
@@ -319,7 +312,7 @@ function chainId(networkByte: number) {
   return `waves:${networkCode(networkByte)}`;
 }
 
-function sameChainAccount(networkByte: number) {
+function withSameChain(networkByte: number) {
   return function (account: string) {
     const [ns, networkCode_] = account.split(':');
     return ns === 'waves' && networkCode_ === networkCode(networkByte);
