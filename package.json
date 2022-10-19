@@ -1,6 +1,6 @@
 {
   "name": "@keeper-wallet/provider-keeper-mobile",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "repository": "https://github.com/Keeper-Wallet/provider-keeper-mobile",
   "author": "Sergey Melnikov <asmelnikovse@gmail.com>",
   "license": "MIT",
