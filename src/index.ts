@@ -222,7 +222,7 @@ export class ProviderKeeperMobile implements Provider {
       .split(':');
 
     return {
-      address: wavesCrypto.address(publicKey, networkCode.charCodeAt(0)),
+      address: wavesCrypto.address({ publicKey }, networkCode),
       publicKey: publicKey,
     };
   }
