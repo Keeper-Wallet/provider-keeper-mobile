@@ -11,33 +11,22 @@ jobs:
       - name: Get sources
         uses: actions/checkout@v3
 
-      - name: Read .nvmrc for Node.js version
-        run: echo ::set-output name=NODE_VERSION::$(cat .nvmrc)
-        id: nvm
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '${{ steps.nvm.outputs.NODE_VERSION }}'
+          cache: yarn
+          node-version-file: .nvmrc
           registry-url: 'https://registry.npmjs.org'
           scope: '@keeper-wallet'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Setup environment
-        shell: bash
-        run: |
+      - run: yarn install --frozen-lockfile
+      - run: |
           cat <<EOF > .env
           VITE_RELAY_URL = ${{ secrets.RELAY_URL }}
           VITE_PROJECT_ID = ${{ secrets.PROJECT_ID }}
           EOF
-
-      - name: Build package
-        run: npm run build
-
-      - name: Publish to NPM
-        run: npm publish --access public
+        shell: bash
+      - run: yarn run build
+      - run: yarn publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
 
