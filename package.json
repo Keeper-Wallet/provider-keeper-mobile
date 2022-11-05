@@ -14,10 +14,11 @@
   "scripts": {
     "build": "vite build && vite build -c vite.config.min.ts && tsc",
     "start": "webpack-dev-server",
-    "eslint:check": "eslint --max-warnings 0 .",
+    "eslint": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",
-    "prettier:check": "prettier --check .",
-    "prettier:fix": "prettier --write ."
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write .",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
     "@walletconnect/qrcode-modal": "^1.8.0",
