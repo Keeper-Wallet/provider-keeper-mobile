@@ -4,14 +4,15 @@
   "repository": "https://github.com/Keeper-Wallet/provider-keeper-mobile",
   "author": "Sergey Melnikov <asmelnikovse@gmail.com>",
   "license": "MIT",
-  "main": "dist/provider-keeper-mobile.js",
+  "main": "dist/provider-keeper-mobile.cjs.js",
+  "unpkg": "dist/provider-keeper-mobile.umd.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
     "src"
   ],
   "scripts": {
-    "build": "tsc && webpack",
+    "build": "vite build && vite build -c vite.config.min.ts && tsc",
     "start": "webpack-dev-server",
     "eslint:check": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",
