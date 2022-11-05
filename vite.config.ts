@@ -19,6 +19,8 @@ export default defineConfig({
         /@walletconnect\/types/,
         /@walletconnect\/qrcode-modal/,
         /@waves\/ts-lib-crypto/,
+        /buffer/,
+        /events/,
         /typed-ts-events/,
       ],
     },
