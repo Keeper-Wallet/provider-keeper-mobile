@@ -45,10 +45,11 @@ export class ProviderKeeperMobile implements Provider {
       : appMeta?.icons && appMeta?.icons.length !== 0
       ? appMeta.icons
       : ['https://avatars.githubusercontent.com/u/96250405'];
+
     this.clientPromise = Client.init({
-      logger: process.env.LOG_LEVEL,
-      relayUrl: process.env.RELAY_URL,
-      projectId: process.env.PROJECT_ID,
+      logger: import.meta.env.VITE_LOG_LEVEL,
+      relayUrl: import.meta.env.VITE_RELAY_URL,
+      projectId: import.meta.env.VITE_PROJECT_ID,
       metadata: {
         name,
         description: meta?.description || window.location.origin,

@@ -29,8 +29,8 @@ jobs:
         shell: bash
         run: |
           cat <<EOF > .env
-          RELAY_URL = ${{ secrets.RELAY_URL }}
-          PROJECT_ID = ${{ secrets.PROJECT_ID }}
+          VITE_RELAY_URL = ${{ secrets.RELAY_URL }}
+          VITE_PROJECT_ID = ${{ secrets.PROJECT_ID }}
           EOF
 
       - name: Build package
