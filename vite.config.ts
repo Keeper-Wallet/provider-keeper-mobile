@@ -19,6 +19,5 @@ export default defineConfig({
         /typed-ts-events/,
       ],
     },
-    minify: false,
   },
 });
