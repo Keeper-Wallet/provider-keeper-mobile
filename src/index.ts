@@ -47,9 +47,7 @@ export class ProviderKeeperMobile implements Provider {
       : ['https://avatars.githubusercontent.com/u/96250405'];
 
     this.clientPromise = Client.init({
-      logger: import.meta.env.VITE_LOG_LEVEL,
-      relayUrl: import.meta.env.VITE_RELAY_URL,
-      projectId: import.meta.env.VITE_PROJECT_ID,
+      projectId: '7679252f11caf1c3a9b885396d11927e',
       metadata: {
         name,
         description: meta?.description || window.location.origin,
