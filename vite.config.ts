@@ -4,15 +4,10 @@ export default defineConfig({
   build: {
     lib: {
       entry: './src/index.ts',
-      name: 'providerKeeperMobile',
+      formats: ['es'],
+      fileName: 'index',
     },
     rollupOptions: {
-      output: [
-        {
-          entryFileNames: 'index.js',
-          format: 'esm',
-        },
-      ],
       external: [
         /@walletconnect\/sign-client/,
         /@walletconnect\/utils/,
