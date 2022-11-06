@@ -14,7 +14,7 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc && vite build",
+    "build": "vite build && tsc",
     "start": "webpack-dev-server",
     "eslint": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",
