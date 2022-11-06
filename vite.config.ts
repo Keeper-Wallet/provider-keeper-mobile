@@ -9,8 +9,8 @@ export default defineConfig({
     rollupOptions: {
       output: [
         {
-          entryFileNames: 'provider-keeper-mobile.cjs.js',
-          format: 'cjs',
+          entryFileNames: 'index.js',
+          format: 'esm',
         },
       ],
       external: [
@@ -18,9 +18,8 @@ export default defineConfig({
         /@walletconnect\/utils/,
         /@walletconnect\/types/,
         /@walletconnect\/qrcode-modal/,
+        /@waves\/signer/,
         /@waves\/ts-lib-crypto/,
-        /buffer/,
-        /events/,
         /typed-ts-events/,
       ],
     },
