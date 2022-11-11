@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "vite build && tsc",
+    "watch": "vite build --watch",
     "eslint": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",
     "prettier": "prettier --check .",
