@@ -91,6 +91,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private clear() {
+    this.loginPromise = undefined;
     this.session = undefined;
     this.user = null;
     localStorage.removeItem(lastTopicKey);
@@ -162,8 +163,8 @@ export class ProviderKeeperMobile implements Provider {
     if (typeof this.loginPromise === 'undefined') {
       this.loginPromise = new Promise((resolve, reject) => {
         this.loginReject = (err: unknown) => {
-          reject(err);
           this.loginPromise = undefined;
+          reject(err);
         };
 
         this.ensureClient()
@@ -198,10 +199,8 @@ export class ProviderKeeperMobile implements Provider {
               }
 
               const session = await approval();
-
               this.onSessionConnected(session);
               resolve(this.user!);
-              this.loginPromise = undefined;
             } catch (err) {
               reject(err); // catch rejection
             } finally {
