@@ -14,12 +14,17 @@ import { getSdkError, getAppMetadata } from '@walletconnect/utils';
 import type { SessionTypes } from '@walletconnect/types';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
+import {
+  ExchangeTransactionOrder,
+  SignedIExchangeTransactionOrder,
+} from '@waves/ts-types';
 
 const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
 
 enum RpcMethod {
   signTransaction = 'waves_signTransaction',
   signTransactionPackage = 'waves_signTransactionPackage',
+  signOrder = 'waves_signOrder',
   signMessage = 'waves_signMessage',
   signTypedData = 'waves_signTypedData',
 }
@@ -271,6 +276,14 @@ export class ProviderKeeperMobile implements Provider {
     tx.senderPublicKey = tx.senderPublicKey || this.user!.publicKey;
 
     return tx;
+  }
+
+  async signOrder(
+    order: ExchangeTransactionOrder
+  ): Promise<SignedIExchangeTransactionOrder<ExchangeTransactionOrder>> {
+    await this.login();
+
+    return this.performRequest(RpcMethod.signOrder, order);
   }
 
   async signMessage(data: string | number): Promise<string> {
