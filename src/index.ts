@@ -1,3 +1,7 @@
+import QRCodeModal from '@walletconnect/qrcode-modal';
+import Client from '@walletconnect/sign-client';
+import type { SessionTypes } from '@walletconnect/types';
+import { getAppMetadata, getSdkError } from '@walletconnect/utils';
 import {
   AuthEvents,
   ConnectOptions,
@@ -8,16 +12,12 @@ import {
   TypedData,
   UserData,
 } from '@waves/signer';
-import { EventEmitter } from 'typed-ts-events';
-import Client from '@walletconnect/sign-client';
-import { getSdkError, getAppMetadata } from '@walletconnect/utils';
-import type { SessionTypes } from '@walletconnect/types';
-import QRCodeModal from '@walletconnect/qrcode-modal';
 import * as wavesCrypto from '@waves/ts-lib-crypto';
 import {
   ExchangeTransactionOrder,
   SignedIExchangeTransactionOrder,
 } from '@waves/ts-types';
+import { EventEmitter } from 'typed-ts-events';
 
 const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
 
@@ -129,6 +129,7 @@ export class ProviderKeeperMobile implements Provider {
 
     if (
       !this.session.namespaces.waves.accounts.some(
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         withSameChain(this.options!.NETWORK_BYTE)
       )
     )
@@ -175,6 +176,7 @@ export class ProviderKeeperMobile implements Provider {
         this.ensureClient()
           .then(async client => {
             if (typeof this.session !== 'undefined') {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               return resolve(this.user!);
             }
 
@@ -182,6 +184,7 @@ export class ProviderKeeperMobile implements Provider {
               const requiredNamespaces = {
                 waves: {
                   methods: Object.values(RpcMethod),
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                   chains: [chainId(this.options!.NETWORK_BYTE)],
                   events: [],
                 },
@@ -195,6 +198,7 @@ export class ProviderKeeperMobile implements Provider {
               if (uri) {
                 QRCodeModal.open(
                   uri,
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                   () => this.loginReject!(getSdkError('USER_REJECTED')),
                   {
                     mobileLinks: ['https://keeper-wallet.app'],
@@ -205,6 +209,7 @@ export class ProviderKeeperMobile implements Provider {
 
               const session = await approval();
               this.onSessionConnected(session);
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               resolve(this.user!);
             } catch (err) {
               reject(err); // catch rejection
@@ -212,6 +217,7 @@ export class ProviderKeeperMobile implements Provider {
               QRCodeModal.close();
             }
           })
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           .catch(err => this.loginReject!(err));
       });
     }
@@ -220,13 +226,15 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private userDataFromSession(session: SessionTypes.Struct): UserData {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const [, networkCode, publicKey] = session.namespaces.waves.accounts
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       .find(withSameChain(this.options!.NETWORK_BYTE))!
       .split(':');
 
     return {
       address: wavesCrypto.address({ publicKey }, networkCode),
-      publicKey: publicKey,
+      publicKey,
     };
   }
 
@@ -238,6 +246,7 @@ export class ProviderKeeperMobile implements Provider {
     return this.ensureClient()
       .then(client =>
         client.disconnect({
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           topic: this.session!.topic,
           reason: getSdkError('USER_DISCONNECTED'),
         })
@@ -246,7 +255,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
-  async sign<T extends Array<SignerTx>>(toSign: T): Promise<SignedTx<T>> {
+  async sign<T extends SignerTx[]>(toSign: T): Promise<SignedTx<T>> {
     await this.login();
 
     if (toSign.length === 1) {
@@ -272,7 +281,9 @@ export class ProviderKeeperMobile implements Provider {
   private async prepareTx(
     tx: SignerTx & { chainId?: number }
   ): Promise<SignerTx> {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     tx.chainId = tx.chainId || this.options!.NETWORK_BYTE;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     tx.senderPublicKey = tx.senderPublicKey || this.user!.publicKey;
 
     return tx;
@@ -290,12 +301,12 @@ export class ProviderKeeperMobile implements Provider {
     await this.login();
 
     const bytes = wavesCrypto.stringToBytes(String(data));
-    const base64 = 'base64:' + wavesCrypto.base64Encode(bytes);
+    const base64 = `base64:${wavesCrypto.base64Encode(bytes)}`;
 
     return this.performRequest(RpcMethod.signMessage, base64);
   }
 
-  async signTypedData(data: Array<TypedData>): Promise<string> {
+  async signTypedData(data: TypedData[]): Promise<string> {
     await this.login();
 
     return this.performRequest(RpcMethod.signTypedData, data);
@@ -307,26 +318,24 @@ export class ProviderKeeperMobile implements Provider {
   ): Promise<T> {
     const client = await this.ensureClient();
 
-    return await client!.request({
+    return await client.request({
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       topic: this.session!.topic,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       chainId: chainId(this.options!.NETWORK_BYTE),
       request: { method, params },
     });
   }
 }
 
-function networkCode(networkByte: number): string {
-  return String.fromCharCode(networkByte);
-}
-
 function chainId(networkByte: number) {
-  return `waves:${networkCode(networkByte)}`;
+  return `waves:${String.fromCharCode(networkByte)}`;
 }
 
 function withSameChain(networkByte: number) {
-  return function (account: string) {
-    const [ns, networkCode_] = account.split(':');
-    return ns === 'waves' && networkCode_ === networkCode(networkByte);
+  return (account: string) => {
+    const [ns, networkCode] = account.split(':');
+    return ns === 'waves' && networkCode === String.fromCharCode(networkByte);
   };
 }
 
