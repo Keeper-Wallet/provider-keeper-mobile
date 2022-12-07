@@ -37,11 +37,9 @@
   "devDependencies": {
     "@commitlint/cli": "^17.3.0",
     "@commitlint/config-conventional": "^17.3.0",
-    "@typescript-eslint/eslint-plugin": "^5.26.0",
-    "@typescript-eslint/parser": "^5.26.0",
+    "@faergeek/eslint-config": "^5.0.148",
     "@waves/signer": "^1.0.10",
     "eslint": "^8.16.0",
-    "eslint-config-prettier": "^8.5.0",
     "prettier": "^2.6.2",
     "semantic-release": "^19.0.5",
     "semantic-release-export-data": "^1.0.1",
