@@ -1,3 +1,10 @@
+import {
+  base58Decode,
+  base58Encode,
+  base64Encode,
+  createAddress,
+  stringToBytes,
+} from '@keeper-wallet/waves-crypto';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import Client from '@walletconnect/sign-client';
 import type { SessionTypes } from '@walletconnect/types';
@@ -12,7 +19,6 @@ import type {
   TypedData,
   UserData,
 } from '@waves/signer';
-import * as wavesCrypto from '@waves/ts-lib-crypto';
 import {
   ExchangeTransactionOrder,
   SignedIExchangeTransactionOrder,
@@ -233,7 +239,9 @@ export class ProviderKeeperMobile implements Provider {
       .split(':');
 
     return {
-      address: wavesCrypto.address({ publicKey }, networkCode),
+      address: base58Encode(
+        createAddress(base58Decode(publicKey), networkCode.charCodeAt(0))
+      ),
       publicKey,
     };
   }
@@ -300,8 +308,8 @@ export class ProviderKeeperMobile implements Provider {
   async signMessage(data: string | number): Promise<string> {
     await this.login();
 
-    const bytes = wavesCrypto.stringToBytes(String(data));
-    const base64 = `base64:${wavesCrypto.base64Encode(bytes)}`;
+    const bytes = stringToBytes(String(data));
+    const base64 = `base64:${base64Encode(bytes)}`;
 
     return this.performRequest(RpcMethod.signMessage, base64);
   }
