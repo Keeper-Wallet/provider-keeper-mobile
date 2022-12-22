@@ -17,7 +17,7 @@ export default defineConfig({
         '@walletconnect/qrcode-modal',
         '@waves/signer',
         '@waves/ts-types',
-        'typed-ts-events',
+        'mitt',
       ],
     },
   },
