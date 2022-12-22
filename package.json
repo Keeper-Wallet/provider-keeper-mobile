@@ -25,11 +25,11 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@keeper-wallet/waves-crypto": "^1.0.3",
     "@walletconnect/qrcode-modal": "^1.8.0",
     "@walletconnect/sign-client": "2.1.4",
     "@walletconnect/types": "2.1.4",
     "@walletconnect/utils": "2.1.4",
-    "@waves/ts-lib-crypto": "^1.4.4-beta.1",
     "@waves/ts-types": "^1.1.0",
     "typed-ts-events": "^1.2.1"
   },
