@@ -23,7 +23,7 @@ import {
   ExchangeTransactionOrder,
   SignedIExchangeTransactionOrder,
 } from '@waves/ts-types';
-import { EventEmitter } from 'typed-ts-events';
+import mitt from 'mitt';
 
 const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
 
@@ -38,8 +38,6 @@ enum RpcMethod {
 export class ProviderKeeperMobile implements Provider {
   user: UserData | null = null;
 
-  private readonly emitter: EventEmitter<AuthEvents> =
-    new EventEmitter<AuthEvents>();
   protected clientPromise: Promise<Client>;
   protected connectPromise: Promise<void>;
   protected connectResolve!: () => void; // initialized in constructor
@@ -47,6 +45,7 @@ export class ProviderKeeperMobile implements Provider {
   private loginReject: ((err: unknown) => void) | undefined;
   private session: SessionTypes.Struct | undefined;
   private options: ConnectOptions | undefined;
+  private readonly emitter = mitt<AuthEvents>();
 
   constructor(meta?: { name?: string; description?: string; icon?: string }) {
     const appMeta = getAppMetadata();
@@ -93,12 +92,12 @@ export class ProviderKeeperMobile implements Provider {
     this.session = session;
     this.user = this.userDataFromSession(session);
     localStorage.setItem(lastTopicKey, session.topic);
-    this.emitter.trigger('login', this.user);
+    this.emitter.emit('login', this.user);
   }
 
   private onSessionDisconnected() {
     this.clear();
-    this.emitter.trigger('logout', void 0);
+    this.emitter.emit('logout', void 0);
   }
 
   private clear() {
@@ -157,7 +156,12 @@ export class ProviderKeeperMobile implements Provider {
     event: EVENT,
     handler: Handler<AuthEvents[EVENT]>
   ): Provider {
-    this.emitter.once(event, handler);
+    const wrappedHandler: Handler<AuthEvents[EVENT]> = (...args) => {
+      handler(...args);
+      this.emitter.off(event, wrappedHandler);
+    };
+
+    this.emitter.on(event, wrappedHandler);
 
     return this;
   }
