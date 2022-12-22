@@ -1,5 +1,11 @@
 # @keeper-wallet/provider-keeper-mobile
 
+[![npm](https://img.shields.io/npm/v/@keeper-wallet/provider-keeper-mobile?color=blue&label=%40keeper-wallet%2Fprovider-keeper-mobile&logo=npm)](https://www.npmjs.com/package/@keeper-wallet/provider-keeper-mobile)
+[![""](https://badgen.net/bundlephobia/min/@keeper-wallet/provider-keeper-mobile)](https://bundlephobia.com/package/@keeper-wallet/provider-keeper-mobile)
+[![""](https://badgen.net/bundlephobia/minzip/@keeper-wallet/provider-keeper-mobile)](https://bundlephobia.com/package/@keeper-wallet/provider-keeper-mobile)
+[![""](https://badgen.net/bundlephobia/dependency-count/@keeper-wallet/provider-keeper-mobile)](https://bundlephobia.com/package/@keeper-wallet/provider-keeper-mobile)
+[![""](https://badgen.net/bundlephobia/tree-shaking/@keeper-wallet/provider-keeper-mobile)](https://bundlephobia.com/package/@keeper-wallet/provider-keeper-mobile)
+
 ProviderKeeperMobile implements a Signature Provider for [Signer](https://github.com/wavesplatform/signer) protocol library.
 
 ## Installation
@@ -7,7 +13,13 @@ ProviderKeeperMobile implements a Signature Provider for [Signer](https://github
 Install using npm:
 
 ```bash
-npm install @keeper-wallet/provider-keeper-mobile
+npm install @waves/signer @keeper-wallet/provider-keeper-mobile
+```
+
+or yarn
+
+```bash
+yarn add @waves/signer @waves/provider-keeper
 ```
 
 ## Usage
