@@ -2,7 +2,7 @@ import QRCodeModal from '@walletconnect/qrcode-modal';
 import Client from '@walletconnect/sign-client';
 import type { SessionTypes } from '@walletconnect/types';
 import { getAppMetadata, getSdkError } from '@walletconnect/utils';
-import {
+import type {
   AuthEvents,
   ConnectOptions,
   Handler,
