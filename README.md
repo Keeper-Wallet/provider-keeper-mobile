@@ -19,7 +19,7 @@ npm install @waves/signer @keeper-wallet/provider-keeper-mobile
 or yarn
 
 ```bash
-yarn add @waves/signer @waves/provider-keeper
+yarn add @waves/signer @keeper-wallet/provider-keeper-mobile
 ```
 
 ## Usage
