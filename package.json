@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "vite build && tsc",
+    "cleanup": "rimraf dist",
     "watch": "vite build --watch",
     "eslint": "eslint --max-warnings 0 .",
     "eslint:fix": "eslint --fix .",
@@ -38,11 +39,14 @@
     "@commitlint/cli": "^17.3.0",
     "@commitlint/config-conventional": "^17.3.0",
     "@faergeek/eslint-config": "^5.0.148",
+    "@size-limit/file": "^8.1.0",
     "@waves/signer": "^1.0.10",
     "eslint": "^8.16.0",
     "prettier": "^2.6.2",
+    "rimraf": "^3.0.2",
     "semantic-release": "^19.0.5",
     "semantic-release-export-data": "^1.0.1",
+    "size-limit": "^8.1.0",
     "typescript": "^4.7.3",
     "vite": "^4.0.0"
   }
