@@ -1,6 +1,6 @@
 [
   {
     "path": "dist/*.mjs",
-    "limit": 2135
+    "limit": 2170
   }
 ]
