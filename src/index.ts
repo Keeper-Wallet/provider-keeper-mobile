@@ -350,5 +350,3 @@ function withSameChain(networkByte: number) {
     return ns === 'waves' && networkCode === String.fromCharCode(networkByte);
   };
 }
-
-export default ProviderKeeperMobile;
