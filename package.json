@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@keeper-wallet/waves-crypto": "^1.0.3",
+    "@keeper-wallet/waves-crypto": "^2.0.0",
     "@walletconnect/qrcode-modal": "^1.8.0",
     "@walletconnect/sign-client": "2.1.5",
     "@walletconnect/types": "2.1.5",

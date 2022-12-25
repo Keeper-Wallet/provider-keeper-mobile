@@ -396,10 +396,10 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
-"@keeper-wallet/waves-crypto@^1.0.3":
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/@keeper-wallet/waves-crypto/-/waves-crypto-1.0.3.tgz#d8aa6d3e19e73737078b4a20994b4f106bb24bad"
-  integrity sha512-GSN4fqqbo6F7lWayJa5RCOWNOJ2SmaoN8bwr6aFrP0PqLHd6n2wYvCS8wo4onfI2alNoeH9BHiLVHQbUdLtw/Q==
+"@keeper-wallet/waves-crypto@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@keeper-wallet/waves-crypto/-/waves-crypto-2.0.0.tgz#8db5f7f5668e58640d32ccf8b105ec3f1c9fc4a1"
+  integrity sha512-3owMlwX3T86QOXdR0josjxnQ4XbzFYLxluIbIC+teWYuKja3znlv5xoGlB9o6rKaje6s28pRx49qV6rhh6B23Q==
   dependencies:
     "@noble/hashes" "^1.1.4"
     "@scure/base" "^1.1.1"
