@@ -3,7 +3,7 @@ import {
   base58Encode,
   base64Encode,
   createAddress,
-  stringToBytes,
+  utf8Encode,
 } from '@keeper-wallet/waves-crypto';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import Client from '@walletconnect/sign-client';
@@ -312,7 +312,7 @@ export class ProviderKeeperMobile implements Provider {
   async signMessage(data: string | number): Promise<string> {
     await this.login();
 
-    const bytes = stringToBytes(String(data));
+    const bytes = utf8Encode(String(data));
     const base64 = `base64:${base64Encode(bytes)}`;
 
     return this.performRequest(RpcMethod.signMessage, base64);
