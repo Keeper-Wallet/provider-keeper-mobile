@@ -42,7 +42,6 @@ export class ProviderKeeperMobile implements Provider {
   protected connectPromise: Promise<void>;
   protected connectResolve!: () => void; // initialized in constructor
   private loginPromise: Promise<UserData> | undefined;
-  private loginReject: ((err: unknown) => void) | undefined;
   private session: SessionTypes.Struct | undefined;
   private options: ConnectOptions | undefined;
   private readonly emitter = mitt<AuthEvents>();
@@ -178,7 +177,7 @@ export class ProviderKeeperMobile implements Provider {
   login(): Promise<UserData> {
     if (typeof this.loginPromise === 'undefined') {
       this.loginPromise = new Promise((resolve, reject) => {
-        this.loginReject = (err: unknown) => {
+        const loginReject = (err: unknown) => {
           this.loginPromise = undefined;
           reject(err);
         };
@@ -191,25 +190,22 @@ export class ProviderKeeperMobile implements Provider {
             }
 
             try {
-              const requiredNamespaces = {
-                waves: {
-                  methods: Object.values(RpcMethod),
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  chains: [chainId(this.options!.NETWORK_BYTE)],
-                  events: [],
-                },
-              };
-
               const { uri, approval } = await client.connect({
                 // pairingTopic: pairing?.topic,
-                requiredNamespaces,
+                requiredNamespaces: {
+                  waves: {
+                    methods: Object.values(RpcMethod),
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    chains: [chainId(this.options!.NETWORK_BYTE)],
+                    events: [],
+                  },
+                },
               });
 
               if (uri) {
                 QRCodeModal.open(
                   uri,
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  () => this.loginReject!(getSdkError('USER_REJECTED')),
+                  () => loginReject(getSdkError('USER_REJECTED')),
                   {
                     mobileLinks: ['https://keeper-wallet.app'],
                     desktopLinks: [],
@@ -222,13 +218,12 @@ export class ProviderKeeperMobile implements Provider {
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               resolve(this.user!);
             } catch (err) {
-              reject(err); // catch rejection
+              loginReject(err); // catch rejection
             } finally {
               QRCodeModal.close();
             }
           })
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          .catch(err => this.loginReject!(err));
+          .catch(loginReject);
       });
     }
 
