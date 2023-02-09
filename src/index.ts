@@ -20,8 +20,8 @@ import type {
   UserData,
 } from '@waves/signer';
 import {
-  ExchangeTransactionOrder,
-  SignedIExchangeTransactionOrder,
+  type ExchangeTransactionOrder,
+  type SignedIExchangeTransactionOrder,
 } from '@waves/ts-types';
 import mitt from 'mitt';
 
