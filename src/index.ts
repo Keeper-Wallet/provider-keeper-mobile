@@ -207,7 +207,7 @@ export class ProviderKeeperMobile implements Provider {
                   uri,
                   () => loginReject(getSdkError('USER_REJECTED')),
                   {
-                    mobileLinks: ['https://keeper-wallet.app'],
+                    mobileLinks: ['Keeper'],
                     desktopLinks: [],
                   }
                 );
