@@ -24,8 +24,10 @@ import {
   type SignedIExchangeTransactionOrder,
 } from '@waves/ts-types';
 import mitt from 'mitt';
+import invariant from 'tiny-invariant';
 
-const lastTopicKey = `wc@2:keeper-mobile//topic:last`;
+const lastTopicKey = (networkByte: number) =>
+  `wc@2:keeper-mobile//topic:${networkByte}`;
 
 enum RpcMethod {
   signTransaction = 'waves_signTransaction',
@@ -82,19 +84,27 @@ export class ProviderKeeperMobile implements Provider {
       this.onSessionConnected(updatedSession);
     });
 
-    client.on('session_delete', () => {
-      this.onSessionDisconnected();
+    client.on('session_delete', ({ topic }) => {
+      this.onSessionDisconnected({ topic });
     });
   }
 
   private onSessionConnected(session: SessionTypes.Struct) {
+    invariant(this.options);
+
     this.session = session;
     this.user = this.userDataFromSession(session);
-    localStorage.setItem(lastTopicKey, session.topic);
+    localStorage.setItem(
+      lastTopicKey(this.options.NETWORK_BYTE),
+      session.topic
+    );
     this.emitter.emit('login', this.user);
   }
 
-  private onSessionDisconnected() {
+  private onSessionDisconnected({ topic }: { topic: string }) {
+    if (typeof this.session === 'undefined' || this.session.topic !== topic)
+      return;
+
     this.clear();
     this.emitter.emit('logout', void 0);
   }
@@ -103,7 +113,6 @@ export class ProviderKeeperMobile implements Provider {
     this.loginPromise = undefined;
     this.session = undefined;
     this.user = null;
-    localStorage.removeItem(lastTopicKey);
   }
 
   async connect(options: ConnectOptions): Promise<void> {
@@ -121,23 +130,21 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private async checkPersistedState(client: Client) {
+    invariant(this.options);
+
+    this.clear();
+
     if (typeof this.session === 'undefined') {
       if (client.session.length === 0) return;
 
-      const topic = localStorage.getItem(lastTopicKey);
+      const topic = localStorage.getItem(
+        lastTopicKey(this.options.NETWORK_BYTE)
+      );
 
       if (topic == null || !client.session.keys.includes(topic)) return;
 
-      this.session = await client.session.get(topic);
+      this.session = client.session.get(topic);
     }
-
-    if (
-      !this.session.namespaces.waves.accounts.some(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        withSameChain(this.options!.NETWORK_BYTE)
-      )
-    )
-      return this.clear();
 
     this.onSessionConnected(this.session);
   }
@@ -181,22 +188,22 @@ export class ProviderKeeperMobile implements Provider {
           this.loginPromise = undefined;
           reject(err);
         };
-
         this.ensureClient()
           .then(async client => {
+            invariant(this.options);
+
             if (typeof this.session !== 'undefined') {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              return resolve(this.user!);
+              invariant(this.user);
+
+              return resolve(this.user);
             }
 
             try {
               const { uri, approval } = await client.connect({
-                // pairingTopic: pairing?.topic,
                 requiredNamespaces: {
                   waves: {
                     methods: Object.values(RpcMethod),
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    chains: [chainId(this.options!.NETWORK_BYTE)],
+                    chains: [chainId(this.options.NETWORK_BYTE)],
                     events: [],
                   },
                 },
@@ -215,8 +222,9 @@ export class ProviderKeeperMobile implements Provider {
 
               const session = await approval();
               this.onSessionConnected(session);
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              resolve(this.user!);
+              invariant(this.user);
+
+              resolve(this.user);
             } catch (err) {
               loginReject(err); // catch rejection
             } finally {
@@ -231,11 +239,14 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   private userDataFromSession(session: SessionTypes.Struct): UserData {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const [, networkCode, publicKey] = session.namespaces.waves.accounts
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      .find(withSameChain(this.options!.NETWORK_BYTE))!
-      .split(':');
+    invariant(this.options);
+
+    const accountWithSameChain = session.namespaces.waves.accounts.find(
+      withSameChain(this.options.NETWORK_BYTE)
+    );
+    invariant(accountWithSameChain);
+
+    const [, networkCode, publicKey] = accountWithSameChain.split(':');
 
     return {
       address: base58Encode(
@@ -249,16 +260,16 @@ export class ProviderKeeperMobile implements Provider {
     if (typeof this.session === 'undefined') {
       return Promise.resolve();
     }
+    const topic = this.session.topic;
 
     return this.ensureClient()
       .then(client =>
         client.disconnect({
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          topic: this.session!.topic,
+          topic,
           reason: getSdkError('USER_DISCONNECTED'),
         })
       )
-      .then(() => this.onSessionDisconnected());
+      .then(() => this.onSessionDisconnected({ topic }));
   }
 
   async sign<T extends SignerTx>(toSign: T[]): Promise<SignedTx<T>>;
@@ -288,10 +299,11 @@ export class ProviderKeeperMobile implements Provider {
   private async prepareTx(
     tx: SignerTx & { chainId?: number }
   ): Promise<SignerTx> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    tx.chainId = tx.chainId || this.options!.NETWORK_BYTE;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    tx.senderPublicKey = tx.senderPublicKey || this.user!.publicKey;
+    invariant(this.options);
+    invariant(this.user);
+
+    tx.chainId = tx.chainId || this.options.NETWORK_BYTE;
+    tx.senderPublicKey = tx.senderPublicKey || this.user.publicKey;
 
     return tx;
   }
@@ -325,11 +337,12 @@ export class ProviderKeeperMobile implements Provider {
   ): Promise<T> {
     const client = await this.ensureClient();
 
+    invariant(this.options);
+    invariant(this.session);
+
     return await client.request({
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      topic: this.session!.topic,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      chainId: chainId(this.options!.NETWORK_BYTE),
+      topic: this.session.topic,
+      chainId: chainId(this.options.NETWORK_BYTE),
       request: { method, params },
     });
   }
