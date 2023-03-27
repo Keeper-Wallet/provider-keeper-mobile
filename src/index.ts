@@ -279,7 +279,7 @@ export class ProviderKeeperMobile implements Provider {
       toSign.map(this.prepareTx.bind(this))
     );
 
-    return this.performRequest(
+    return this.performRequest<SignedTx<T>>(
       RpcMethod.signTransactionPackage,
       preparedToSign
     );
