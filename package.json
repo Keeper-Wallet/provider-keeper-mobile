@@ -7,7 +7,10 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.mjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
+    }
   },
   "sideEffects": false,
   "files": [
