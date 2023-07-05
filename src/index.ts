@@ -96,7 +96,7 @@ export class ProviderKeeperMobile implements Provider {
     this.user = this.userDataFromSession(session);
     localStorage.setItem(
       lastTopicKey(this.options.NETWORK_BYTE),
-      session.topic
+      session.topic,
     );
     this.emitter.emit('login', this.user);
   }
@@ -138,7 +138,7 @@ export class ProviderKeeperMobile implements Provider {
       if (client.session.length === 0) return;
 
       const topic = localStorage.getItem(
-        lastTopicKey(this.options.NETWORK_BYTE)
+        lastTopicKey(this.options.NETWORK_BYTE),
       );
 
       if (topic == null || !client.session.keys.includes(topic)) return;
@@ -151,7 +151,7 @@ export class ProviderKeeperMobile implements Provider {
 
   on<EVENT extends keyof AuthEvents>(
     event: EVENT,
-    handler: Handler<AuthEvents[EVENT]>
+    handler: Handler<AuthEvents[EVENT]>,
   ): Provider {
     this.emitter.on(event, handler);
 
@@ -160,7 +160,7 @@ export class ProviderKeeperMobile implements Provider {
 
   once<EVENT extends keyof AuthEvents>(
     event: EVENT,
-    handler: Handler<AuthEvents[EVENT]>
+    handler: Handler<AuthEvents[EVENT]>,
   ): Provider {
     const wrappedHandler: Handler<AuthEvents[EVENT]> = (...args) => {
       handler(...args);
@@ -174,7 +174,7 @@ export class ProviderKeeperMobile implements Provider {
 
   off<EVENT extends keyof AuthEvents>(
     event: EVENT,
-    handler: Handler<AuthEvents[EVENT]>
+    handler: Handler<AuthEvents[EVENT]>,
   ): Provider {
     this.emitter.off(event, handler);
 
@@ -216,7 +216,7 @@ export class ProviderKeeperMobile implements Provider {
                   {
                     mobileLinks: ['Keeper'],
                     desktopLinks: [],
-                  }
+                  },
                 );
               }
 
@@ -242,7 +242,7 @@ export class ProviderKeeperMobile implements Provider {
     invariant(this.options);
 
     const accountWithSameChain = session.namespaces.waves.accounts.find(
-      withSameChain(this.options.NETWORK_BYTE)
+      withSameChain(this.options.NETWORK_BYTE),
     );
     invariant(accountWithSameChain);
 
@@ -250,7 +250,7 @@ export class ProviderKeeperMobile implements Provider {
 
     return {
       address: base58Encode(
-        createAddress(base58Decode(publicKey), networkCode.charCodeAt(0))
+        createAddress(base58Decode(publicKey), networkCode.charCodeAt(0)),
       ),
       publicKey,
     };
@@ -267,7 +267,7 @@ export class ProviderKeeperMobile implements Provider {
         client.disconnect({
           topic,
           reason: getSdkError('USER_DISCONNECTED'),
-        })
+        }),
       )
       .then(() => this.onSessionDisconnected({ topic }));
   }
@@ -280,24 +280,24 @@ export class ProviderKeeperMobile implements Provider {
       const preparedTx = await this.prepareTx(toSign[0]);
       const signedTx = await this.performRequest(
         RpcMethod.signTransaction,
-        preparedTx
+        preparedTx,
       );
 
       return [signedTx] as SignedTx<T>;
     }
 
     const preparedToSign = await Promise.all(
-      toSign.map(this.prepareTx.bind(this))
+      toSign.map(this.prepareTx.bind(this)),
     );
 
     return this.performRequest<SignedTx<T>>(
       RpcMethod.signTransactionPackage,
-      preparedToSign
+      preparedToSign,
     );
   }
 
   private async prepareTx(
-    tx: SignerTx & { chainId?: number }
+    tx: SignerTx & { chainId?: number },
   ): Promise<SignerTx> {
     invariant(this.options);
     invariant(this.user);
@@ -309,7 +309,7 @@ export class ProviderKeeperMobile implements Provider {
   }
 
   async signOrder(
-    order: ExchangeTransactionOrder
+    order: ExchangeTransactionOrder,
   ): Promise<SignedIExchangeTransactionOrder<ExchangeTransactionOrder>> {
     await this.login();
 
