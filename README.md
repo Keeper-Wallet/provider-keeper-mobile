@@ -47,6 +47,8 @@ For more information and common use cases for CSP, see the
   });
   ```
 
+  **🛈** The recommended icon size is at least 180×180 px.
+
 - #### For Testnet:
 
   ```js
