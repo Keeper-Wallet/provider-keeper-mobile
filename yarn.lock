@@ -427,9 +427,9 @@
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
 "@keeper-wallet/waves-crypto@^3.0.0":
-  version "3.0.6"
-  resolved "https://registry.yarnpkg.com/@keeper-wallet/waves-crypto/-/waves-crypto-3.0.6.tgz#aa162b86644439f4a644431f38e18817cefcc789"
-  integrity sha512-GWNowo62DeDnXLTh57uDOzOwJmO7KbGOwWgjmscHhwAU0HrSVRjZjWhirxA0/YUqp4oV+gjTpFZP2iaYQNsGoA==
+  version "3.0.7"
+  resolved "https://registry.yarnpkg.com/@keeper-wallet/waves-crypto/-/waves-crypto-3.0.7.tgz#b9c37e4eb893e9576fc9f0830247707af51c740d"
+  integrity sha512-i/Ut2/qKSRije3KRjXv5xHeCwVu5f0qlnwsd5ClKyDRVPoBPVIQNGU3Uyc3EdMBJaKNum458YUeydiXie0LnGw==
   dependencies:
     "@noble/hashes" "^1.1.4"
     "@scure/base" "^1.1.1"
