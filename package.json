@@ -44,7 +44,7 @@
     "@commitlint/cli": "^17.3.0",
     "@commitlint/config-conventional": "^17.3.0",
     "@faergeek/eslint-config": "^5.0.148",
-    "@size-limit/file": "^8.1.0",
+    "@size-limit/file": "^9.0.0",
     "@waves/signer": "^1.0.10",
     "eslint": "^8.16.0",
     "prettier": "^3.0.0",
